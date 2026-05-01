@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../services/gemini_service.dart';
 import '../theme/app_theme.dart';
+import '../repositories/chat_repository.dart';
+import '../models/chat_message_model.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -13,22 +15,67 @@ class _ChatScreenState extends State<ChatScreen> {
   final _chatController = TextEditingController();
   final _scrollController = ScrollController();
   final List<Map<String, String>> _messages = [];
+  final ChatRepository _chatRepository = ChatRepository();
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadChatHistory();
+  }
+
+  /// Load chat history dari database
+  Future<void> _loadChatHistory() async {
+    try {
+      final messages = await _chatRepository.getAllMessages();
+      setState(() {
+        _messages.clear();
+        for (var msg in messages) {
+          _messages.add(msg.toUIMap());
+        }
+      });
+      print('[DEBUG] Loaded ${_messages.length} messages from database');
+      _scrollToBottom();
+    } catch (e) {
+      print('[ERROR] Error loading chat history: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _chatController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   void _sendMessage() async {
     final text = _chatController.text.trim();
     if (text.isEmpty) return;
+    
+    // Add user message to UI
     setState(() {
       _messages.add({'role': 'user', 'text': text});
       _isLoading = true;
     });
+    
+    // Save user message to database
+    await _chatRepository.addMessage(ChatMessage(role: 'user', text: text));
+    
     _chatController.clear();
     _scrollToBottom();
+    
+    // Get AI response
     final response = await GeminiService.askGemini(text);
+    
+    // Add AI message to UI
     setState(() {
       _messages.add({'role': 'ai', 'text': response});
       _isLoading = false;
     });
+    
+    // Save AI message to database
+    await _chatRepository.addMessage(ChatMessage(role: 'ai', text: response));
+    
     _scrollToBottom();
   }
 
@@ -42,6 +89,40 @@ class _ChatScreenState extends State<ChatScreen> {
         );
       }
     });
+  }
+
+  /// Clear all chat history from database and UI
+  void _clearHistory() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Chat History?'),
+        content: const Text('Semua pesan chat akan dihapus dan tidak bisa dipulihkan.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _chatRepository.clearAllMessages();
+              setState(() {
+                _messages.clear();
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Chat history cleared'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+              print('[DEBUG] Chat history cleared');
+            },
+            child: const Text('Clear', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -70,6 +151,13 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, size: 22),
+            tooltip: 'Clear History',
+            onPressed: _clearHistory,
+          ),
+        ],
       ),
       body: Column(
         children: [

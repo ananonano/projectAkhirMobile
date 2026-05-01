@@ -22,7 +22,8 @@ class LapanganRepository {
 
     if (location != null && location.isNotEmpty) {
       if (whereString.isNotEmpty) whereString += ' AND ';
-      whereString += 'address LIKE ?';
+      whereString += '(nama_lapangan LIKE ? OR address LIKE ?)';
+      whereArgs.add('%$location%');
       whereArgs.add('%$location%');
     }
 

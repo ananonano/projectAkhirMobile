@@ -19,7 +19,92 @@ class DatabaseHelper {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, 'lapangin.db');
 
-    return await openDatabase(path, version: 1, onCreate: _onCreate);
+    return await openDatabase(
+      path,
+      version: 6,
+      onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
+    );
+  }
+
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Upgrade to v2: Add jam_buka and jam_tutup columns
+      try {
+        await db.execute('ALTER TABLE lapangans ADD COLUMN jam_buka TEXT DEFAULT "08:00"');
+        await db.execute('ALTER TABLE lapangans ADD COLUMN jam_tutup TEXT DEFAULT "22:00"');
+        print('[DB] Successfully upgraded schema to v2 - Added jam_buka and jam_tutup');
+      } catch (e) {
+        print('[DB] Upgrade warning v2: $e');
+      }
+    }
+    
+    if (oldVersion < 3) {
+      // Upgrade to v3: Add chat_messages table
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS chat_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            role TEXT NOT NULL,
+            text TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          )
+        ''');
+        print('[DB] Successfully upgraded schema to v3 - Added chat_messages table');
+      } catch (e) {
+        print('[DB] Upgrade warning v3: $e');
+      }
+    }
+    
+    if (oldVersion < 4) {
+      // Upgrade to v4: Add reviews table
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            lapangan_id INTEGER NOT NULL,
+            rating INTEGER NOT NULL,
+            comment TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+            FOREIGN KEY (lapangan_id) REFERENCES lapangans (id) ON DELETE CASCADE
+          )
+        ''');
+        print('[DB] Successfully upgraded schema to v4 - Added reviews table');
+      } catch (e) {
+        print('[DB] Upgrade warning v4: $e');
+      }
+    }
+    
+    if (oldVersion < 5) {
+      // Upgrade to v5: Add lapangan_images table for multiple images per lapangan
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS lapangan_images (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lapangan_id INTEGER NOT NULL,
+            image_path TEXT NOT NULL,
+            position INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (lapangan_id) REFERENCES lapangans (id) ON DELETE CASCADE
+          )
+        ''');
+        print('[DB] Successfully upgraded schema to v5 - Added lapangan_images table');
+      } catch (e) {
+        print('[DB] Upgrade warning v5: $e');
+      }
+    }
+    
+    if (oldVersion < 6) {
+      // Upgrade to v6: Add status column to bookings table for cancel functionality
+      try {
+        await db.execute('ALTER TABLE bookings ADD COLUMN status TEXT DEFAULT "completed"');
+        print('[DB] Successfully upgraded schema to v6 - Added status to bookings');
+      } catch (e) {
+        print('[DB] Upgrade warning v6: $e');
+      }
+    }
   }
 
   // Fungsi Register User Baru
@@ -68,6 +153,8 @@ class DatabaseHelper {
         address TEXT,
         lat REAL,
         lng REAL,
+        jam_buka TEXT DEFAULT "08:00",
+        jam_tutup TEXT DEFAULT "22:00",
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     ''');
@@ -102,6 +189,7 @@ class DatabaseHelper {
         tanggal TEXT, 
         jam TEXT, 
         total_harga TEXT, 
+        status TEXT DEFAULT "completed",
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
         FOREIGN KEY (lapangan_id) REFERENCES lapangans (id) ON DELETE CASCADE
@@ -118,6 +206,42 @@ class DatabaseHelper {
         status TEXT DEFAULT 'unpaid',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (booking_id) REFERENCES bookings (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 7. Tabel Chat Messages (for chat history persistence)
+    await db.execute('''
+      CREATE TABLE chat_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        role TEXT NOT NULL,
+        text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    ''');
+
+    // 8. Tabel Reviews (for ratings and comments)
+    await db.execute('''
+      CREATE TABLE reviews (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        lapangan_id INTEGER NOT NULL,
+        rating INTEGER NOT NULL,
+        comment TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+        FOREIGN KEY (lapangan_id) REFERENCES lapangans (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 9. Tabel Lapangan Images (for storing multiple images per lapangan)
+    await db.execute('''
+      CREATE TABLE lapangan_images (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        lapangan_id INTEGER NOT NULL,
+        image_path TEXT NOT NULL,
+        position INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (lapangan_id) REFERENCES lapangans (id) ON DELETE CASCADE
       )
     ''');
 

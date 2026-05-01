@@ -9,6 +9,8 @@ class LapanganModel {
   final String? address;
   final double? lat;
   final double? lng;
+  final String jamBuka;
+  final String jamTutup;
   final String? createdAt;
 
   LapanganModel({
@@ -22,6 +24,8 @@ class LapanganModel {
     this.address,
     this.lat,
     this.lng,
+    this.jamBuka = "08:00",
+    this.jamTutup = "22:00",
     this.createdAt,
   });
 
@@ -38,6 +42,8 @@ class LapanganModel {
       address: map['address'],
       lat: map['lat'] != null ? (map['lat'] as num).toDouble() : null,
       lng: map['lng'] != null ? (map['lng'] as num).toDouble() : null,
+      jamBuka: map['jam_buka'] ?? "08:00",
+      jamTutup: map['jam_tutup'] ?? "22:00",
       createdAt: map['created_at'],
     );
   }
@@ -55,6 +61,8 @@ class LapanganModel {
       if (address != null) 'address': address,
       if (lat != null) 'lat': lat,
       if (lng != null) 'lng': lng,
+      'jam_buka': jamBuka,
+      'jam_tutup': jamTutup,
     };
   }
 

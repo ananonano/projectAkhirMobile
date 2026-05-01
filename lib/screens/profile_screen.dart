@@ -7,8 +7,12 @@ import 'package:image_picker/image_picker.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/time_controller.dart';
 import '../theme/app_theme.dart';
+import '../database/database.dart';
+import '../models/user_model.dart';
 import 'login_screen.dart';
 import 'dodge_ball_screen.dart';
+import 'edit_profile_screen.dart';
+import 'time_converter_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -22,10 +26,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _role = "user";
   bool _isBiometricEnabled = false;
   String? _imagePath; // State buat nyimpen path gambar
+  UserModel? _currentUser;
 
   final AuthController _authController = AuthController();
   final TimeController _timeController = TimeController();
   final LocalAuthentication auth = LocalAuthentication();
+  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
   late Timer _timer;
   DateTime _currentTime = DateTime.now();
   String _selectedTimeZone = 'WIB';
@@ -43,6 +49,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
+
+
   @override
   void dispose() {
     _timer.cancel();
@@ -55,12 +63,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? username = prefs.getString('username');
+    
     setState(() {
-      _username = prefs.getString('username') ?? "User";
+      _username = username ?? "User";
       _role = prefs.getString('role') ?? "user";
       // Load foto profil berdasarkan username spesifik (bukan global)
       _imagePath = prefs.getString('profile_image_$_username');
     });
+
+    // Load user dari database
+    if (username != null) {
+      try {
+        final db = await _dbHelper.database;
+        final result = await db.query(
+          'users',
+          where: 'username = ?',
+          whereArgs: [username],
+        );
+
+        if (result.isNotEmpty) {
+          setState(() {
+            _currentUser = UserModel.fromMap(result.first);
+          });
+          print('[ProfileScreen] User loaded from database: ${_currentUser?.name}');
+        }
+      } catch (e) {
+        print('[ProfileScreen] Error loading user from database: $e');
+      }
+    }
   }
 
   Future<void> _pickImage() async {
@@ -183,6 +214,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
           margin: const EdgeInsets.all(16),
         ),
       );
+    }
+  }
+
+  Future<void> _openEditProfile() async {
+    if (_currentUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Error: User data not loaded')),
+      );
+      return;
+    }
+
+    final updatedUser = await Navigator.push<UserModel>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProfileScreen(user: _currentUser!),
+      ),
+    );
+
+    if (updatedUser != null) {
+      setState(() => _currentUser = updatedUser);
+      // Reload image from updated user data
+      if (updatedUser.image != null) {
+        setState(() => _imagePath = updatedUser.image);
+      }
+      
+      // Reload user data from database to ensure everything is synced
+      await _loadUserData();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profil berhasil diperbarui!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     }
   }
 
@@ -388,7 +455,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 65),
 
             Text(
-              _username.toUpperCase(),
+              (_currentUser?.name ?? _username).toUpperCase(),
               style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w900,

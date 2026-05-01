@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'services/notification_service.dart';
+import 'database/database.dart';
 import 'screens/login_screen.dart';
 import 'theme/app_theme.dart';
 
@@ -9,6 +10,10 @@ Future<void> main() async {
 
   // Load file .env
   await dotenv.load(fileName: ".env");
+
+  // Initialize database
+  await DatabaseHelper.instance.database;
+  print('[DEBUG] Database initialized');
 
   // Inisialisasi notifikasi lokal
   await NotificationService.instance.init();

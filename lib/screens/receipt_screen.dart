@@ -13,6 +13,8 @@ class ReceiptScreen extends StatefulWidget {
   final double totalDibayar;
   final String mataUang;
   final String metodeBayar;
+  final bool isFromHistory;
+  final String? status;
 
   const ReceiptScreen({
     super.key,
@@ -22,6 +24,8 @@ class ReceiptScreen extends StatefulWidget {
     required this.totalDibayar,
     required this.mataUang,
     required this.metodeBayar,
+    this.isFromHistory = false,
+    this.status = 'completed',
   });
 
   @override
@@ -38,7 +42,10 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
     _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _scaleAnim = CurvedAnimation(parent: _animController, curve: Curves.elasticOut);
     _animController.forward();
-    _sendNotifications();
+    // Only send notifications if this is NOT from history view
+    if (!widget.isFromHistory) {
+      _sendNotifications();
+    }
   }
 
   @override
@@ -100,13 +107,14 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat.currency(locale: 'id', symbol: '${widget.mataUang} ', decimalDigits: 2);
+    final isCancelled = widget.status == 'cancelled';
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Booking Berhasil'),
+        title: Text(isCancelled ? 'Booking Dibatalkan' : 'Booking Berhasil'),
         automaticallyImplyLeading: false,
-        backgroundColor: AppColors.success,
+        backgroundColor: isCancelled ? Colors.red : AppColors.success,
         foregroundColor: Colors.white,
         titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700),
         iconTheme: const IconThemeData(color: Colors.white),
@@ -117,23 +125,33 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
           children: [
             const SizedBox(height: 16),
 
-            // Animated checkmark
+            // Animated icon
             ScaleTransition(
               scale: _scaleAnim,
               child: Container(
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.12),
+                  color: isCancelled ? Colors.red.withOpacity(0.12) : AppColors.success.withOpacity(0.12),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 56),
+                child: Icon(
+                  isCancelled ? Icons.cancel_rounded : Icons.check_circle_rounded,
+                  color: isCancelled ? Colors.red : AppColors.success,
+                  size: 56,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Booking Sukses!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            Text(
+              isCancelled ? 'Booking Dibatalkan' : 'Booking Sukses!',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
             const SizedBox(height: 6),
-            Text('Lapangan siap menunggumu 🎉', style: TextStyle(color: AppColors.textSecondary.withOpacity(0.8), fontSize: 14)),
+            Text(
+              isCancelled ? 'Booking kamu telah dibatalkan oleh admin' : 'Lapangan siap menunggumu 🎉',
+              style: TextStyle(color: AppColors.textSecondary.withOpacity(0.8), fontSize: 14),
+            ),
 
             const SizedBox(height: 28),
 
@@ -143,6 +161,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
+                border: isCancelled ? Border.all(color: Colors.red.withOpacity(0.2), width: 1.5) : null,
                 boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, offset: Offset(0, 4))],
               ),
               child: Column(
@@ -150,13 +169,13 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                   // Header card
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    decoration: BoxDecoration(
+                      color: isCancelled ? Colors.red : AppColors.primary,
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 20),
+                        Icon(isCancelled ? Icons.cancel_rounded : Icons.receipt_long_rounded, color: Colors.white, size: 20),
                         const SizedBox(width: 8),
                         Text(widget.namaLapangan, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
                       ],

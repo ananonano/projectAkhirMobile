@@ -76,6 +76,8 @@ class _BookingScreenState extends State<BookingScreen> {
   }
 
   Widget _buildBookingCard(BookingModel item, bool isSelesai) {
+    final isCancelled = item.status == 'cancelled';
+    
     return GestureDetector(
       onTap: () => Navigator.push(context, MaterialPageRoute(
         builder: (_) => ReceiptScreen(
@@ -85,6 +87,8 @@ class _BookingScreenState extends State<BookingScreen> {
           totalDibayar: item.totalHargaInt.toDouble(),
           mataUang: 'IDR',
           metodeBayar: 'Telah Dibayar',
+          isFromHistory: true,
+          status: item.status,
         ),
       )),
       child: Container(
@@ -92,6 +96,7 @@ class _BookingScreenState extends State<BookingScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
+          border: isCancelled ? Border.all(color: Colors.red.withOpacity(0.3), width: 1.5) : null,
           boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 3))],
         ),
         child: Column(
@@ -100,7 +105,11 @@ class _BookingScreenState extends State<BookingScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: isSelesai ? AppColors.inputFill : AppColors.success.withOpacity(0.08),
+                color: isCancelled
+                    ? Colors.red.withOpacity(0.08)
+                    : isSelesai
+                        ? AppColors.inputFill
+                        : AppColors.success.withOpacity(0.08),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
               ),
               child: Row(
@@ -111,30 +120,54 @@ class _BookingScreenState extends State<BookingScreen> {
                     style: TextStyle(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
-                      color: isSelesai ? AppColors.textSecondary : AppColors.textPrimary,
+                      color: isCancelled
+                          ? Colors.red
+                          : isSelesai
+                              ? AppColors.textSecondary
+                              : AppColors.textPrimary,
                     ),
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isSelesai ? AppColors.textSecondary.withOpacity(0.15) : AppColors.success.withOpacity(0.15),
+                      color: isCancelled
+                          ? Colors.red.withOpacity(0.15)
+                          : isSelesai
+                              ? AppColors.textSecondary.withOpacity(0.15)
+                              : AppColors.success.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(50),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isSelesai ? Icons.check_circle_outline_rounded : Icons.schedule_rounded,
+                          isCancelled
+                              ? Icons.cancel_rounded
+                              : isSelesai
+                                  ? Icons.check_circle_outline_rounded
+                                  : Icons.schedule_rounded,
                           size: 12,
-                          color: isSelesai ? AppColors.textSecondary : AppColors.success,
+                          color: isCancelled
+                              ? Colors.red
+                              : isSelesai
+                                  ? AppColors.textSecondary
+                                  : AppColors.success,
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          isSelesai ? 'Selesai' : 'Akan Datang',
+                          isCancelled
+                              ? 'Dibatalkan'
+                              : isSelesai
+                                  ? 'Selesai'
+                                  : 'Akan Datang',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: isSelesai ? AppColors.textSecondary : AppColors.success,
+                            color: isCancelled
+                                ? Colors.red
+                                : isSelesai
+                                    ? AppColors.textSecondary
+                                    : AppColors.success,
                           ),
                         ),
                       ],
@@ -166,11 +199,42 @@ class _BookingScreenState extends State<BookingScreen> {
                         style: TextStyle(
                           fontWeight: FontWeight.w800,
                           fontSize: 16,
-                          color: isSelesai ? AppColors.textSecondary : AppColors.primary,
+                          color: isCancelled
+                              ? Colors.red
+                              : isSelesai
+                                  ? AppColors.textSecondary
+                                  : AppColors.primary,
                         ),
                       ),
                     ],
                   ),
+                  if (isCancelled) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.withOpacity(0.2)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.info_rounded, size: 14, color: Colors.red),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Booking ini telah dibatalkan oleh admin',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.red,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

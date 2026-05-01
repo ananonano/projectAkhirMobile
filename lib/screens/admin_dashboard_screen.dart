@@ -5,7 +5,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/lapangan_controller.dart';
 import '../models/lapangan_model.dart';
 import '../theme/app_theme.dart';
+import '../repositories/booking_repository.dart';
 import 'login_screen.dart';
+import 'revenue_report_screen.dart';
+import 'admin_bookings_screen.dart';
 
 // ==========================================
 // 1. HALAMAN UTAMA DASHBOARD ADMIN
@@ -77,68 +80,125 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _lapangans.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        width: 72,
-                        height: 72,
-                        decoration: BoxDecoration(color: AppColors.inputFill, borderRadius: BorderRadius.circular(20)),
-                        child: const Icon(Icons.sports_soccer_rounded, size: 36, color: AppColors.textSecondary),
-                      ),
-                      const SizedBox(height: 16),
-                      const Text('Belum ada lapangan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary)),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _lapangans.length,
-                  itemBuilder: (context, index) {
-                    final lap = _lapangans[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 3))],
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(12),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: _buildThumbnail(lap),
-                        ),
-                        title: Text(lap.namaLapangan, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(50)),
-                                child: Text(lap.jenisLabel, style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700)),
-                              ),
-                              const SizedBox(width: 8),
-                              Text('Rp ${lap.harga}/jam', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                            ],
+          : SingleChildScrollView(
+              child: Column(
+                children: [
+                  // Quick Actions Bar
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    color: AppColors.primary.withOpacity(0.05),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const RevenueReportScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.analytics_rounded),
+                            label: const Text('Revenue'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              foregroundColor: Colors.white,
+                            ),
                           ),
                         ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                          onPressed: () async {
-                            if (lap.id != null) {
-                              await _controller.deleteLapangan(lap.id!);
-                              _fetchLapangans();
-                            }
-                          },
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const AdminBookingsScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.event_available_rounded),
+                            label: const Text('Bookings'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
                         ),
+                      ],
+                    ),
+                  ),
+                  
+                  // Lapangan List
+                  if (_lapangans.isEmpty)
+                    Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(color: AppColors.inputFill, borderRadius: BorderRadius.circular(20)),
+                            child: const Icon(Icons.sports_soccer_rounded, size: 36, color: AppColors.textSecondary),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('Belum ada lapangan', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.textPrimary)),
+                        ],
                       ),
-                    );
-                  },
-                ),
+                    )
+                  else
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _lapangans.length,
+                      itemBuilder: (context, index) {
+                        final lap = _lapangans[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.surface,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 3))],
+                          ),
+                          child: ListTile(
+                            contentPadding: const EdgeInsets.all(12),
+                            leading: ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: _buildThumbnail(lap),
+                            ),
+                            title: Text(lap.namaLapangan, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary)),
+                            subtitle: Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.1), borderRadius: BorderRadius.circular(50)),
+                                    child: Text(lap.jenisLabel, style: const TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.w700)),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text('Rp ${lap.harga}/jam', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                                ],
+                              ),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
+                              onPressed: () async {
+                                if (lap.id != null) {
+                                  await _controller.deleteLapangan(lap.id!);
+                                  _fetchLapangans();
+                                }
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () async {
           await Navigator.push(context, MaterialPageRoute(builder: (_) => const FormLapanganScreen()));

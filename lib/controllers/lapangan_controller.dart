@@ -27,4 +27,9 @@ class LapanganController {
   Future<void> deleteLapangan(int id) async {
     await _repo.deleteLapangan(id);
   }
+
+  // Update lapangan (Admin)
+  Future<int> updateLapangan(LapanganModel lapangan) async {
+    return _repo.updateLapangan(lapangan);
+  }
 }

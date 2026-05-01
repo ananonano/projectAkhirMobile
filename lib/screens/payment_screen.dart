@@ -4,6 +4,9 @@ import 'package:local_auth/local_auth.dart';
 import '../controllers/auth_controller.dart';
 import '../controllers/booking_controller.dart';
 import '../controllers/currency_controller.dart';
+import '../controllers/voucher_controller.dart';
+import '../models/voucher_model.dart';
+import '../widgets/voucher_selector.dart';
 import '../theme/app_theme.dart';
 import 'receipt_screen.dart';
 
@@ -27,10 +30,40 @@ class _PaymentScreenState extends State<PaymentScreen> {
   final _authController = AuthController();
   final _bookingController = BookingController();
   final _currencyController = CurrencyController();
+  final _voucherController = VoucherController();
   final _auth = LocalAuthentication();
 
   String _selectedCurrency = 'IDR';
   String _paymentMethod = 'QRIS / E-Wallet (Lokal)';
+  List<VoucherModel> _availableVouchers = [];
+  VoucherModel? _selectedVoucher;
+  String _username = '';
+  bool _isLoadingVouchers = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserVouchers();
+  }
+
+  Future<void> _loadUserVouchers() async {
+    try {
+      final username = await _authController.getSessionUsername();
+      final vouchers = await _voucherController.getUnusedVouchers(username);
+      if (mounted) {
+        setState(() {
+          _username = username;
+          _availableVouchers = vouchers;
+          _isLoadingVouchers = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading vouchers: $e');
+      if (mounted) {
+        setState(() => _isLoadingVouchers = false);
+      }
+    }
+  }
 
   void _updateCurrency(String code) {
     setState(() {
@@ -98,10 +131,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
         selectedTimes: widget.selectedTimes,
         hargaPerJam: hargaPerJam,
       );
-      final payment = _currencyController.calculatePayment(
-        hargaPerJam * widget.selectedTimes.length,
-        _selectedCurrency,
-      );
+      
+      // Mark voucher as used if selected
+      if (_selectedVoucher != null && _selectedVoucher!.id != null) {
+        await _voucherController.useVoucher(_selectedVoucher!.id!);
+      }
+      
+      final int totalHargaIDR = hargaPerJam * widget.selectedTimes.length;
+      final double discountAmount = _selectedVoucher != null
+          ? totalHargaIDR * (_selectedVoucher!.percentDiscount / 100)
+          : 0;
+      final int finalHargaIDR = (totalHargaIDR - discountAmount).toInt();
+      
+      final payment = _currencyController.calculatePayment(finalHargaIDR, _selectedCurrency);
+      
       if (mounted) {
         Navigator.pushReplacement(context, MaterialPageRoute(
           builder: (_) => ReceiptScreen(
@@ -127,7 +170,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
   Widget build(BuildContext context) {
     final int hargaPerJamIDR = int.tryParse(widget.lapangan['harga']?.toString() ?? '0') ?? 0;
     final int totalHargaIDR = hargaPerJamIDR * widget.selectedTimes.length;
-    final payment = _currencyController.calculatePayment(totalHargaIDR, _selectedCurrency);
+    
+    // Calculate discount from selected voucher
+    final double discountAmount = _selectedVoucher != null
+        ? totalHargaIDR * (_selectedVoucher!.percentDiscount / 100)
+        : 0;
+    final int finalHargaBeforeTax = (totalHargaIDR - discountAmount).toInt();
+    
+    final payment = _currencyController.calculatePayment(finalHargaBeforeTax, _selectedCurrency);
     final double pajakIDR = payment['tax']!;
     final double totalFinalIDR = payment['totalIDR']!;
     final double totalFinalKonversi = payment['totalConverted']!;
@@ -168,6 +218,19 @@ class _PaymentScreenState extends State<PaymentScreen> {
             ),
 
             const SizedBox(height: 20),
+
+            // Voucher Selector
+            if (!_isLoadingVouchers && _availableVouchers.isNotEmpty) ...[
+              _sectionTitle('Promo & Diskon'),
+              const SizedBox(height: 10),
+              VoucherSelector(
+                availableVouchers: _availableVouchers,
+                onVoucherSelected: (voucher) {
+                  setState(() => _selectedVoucher = voucher);
+                },
+              ),
+              const SizedBox(height: 20),
+            ],
 
             // Currency
             _sectionTitle('Mata Uang Tagihan'),
@@ -252,6 +315,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
               child: Column(
                 children: [
                   _priceRow('Harga Lapangan', 'Rp ${fmt.format(totalHargaIDR)}', false),
+                  if (_selectedVoucher != null) ...[
+                    const SizedBox(height: 8),
+                    _priceRow(
+                      'Diskon Voucher (${_selectedVoucher!.percentDiscount}%)',
+                      '- Rp ${fmt.format(discountAmount.toInt())}',
+                      true,
+                      color: AppColors.success,
+                    ),
+                  ],
                   if (currentTaxRate > 0) ...[
                     const SizedBox(height: 8),
                     _priceRow('Biaya Layanan (${(currentTaxRate * 100).toStringAsFixed(1)}%)', '+ Rp ${fmt.format(pajakIDR)}', true),
@@ -345,11 +417,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     );
   }
 
-  Widget _priceRow(String label, String value, bool isRed) => Row(
+  Widget _priceRow(String label, String value, bool isRed, {Color? color}) => Row(
     mainAxisAlignment: MainAxisAlignment.spaceBetween,
     children: [
-      Text(label, style: TextStyle(color: isRed ? Colors.red : AppColors.textSecondary, fontSize: 13)),
-      Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: isRed ? Colors.red : AppColors.textPrimary, fontSize: 13)),
+      Text(label, style: TextStyle(color: color ?? (isRed ? Colors.red : AppColors.textSecondary), fontSize: 13)),
+      Text(value, style: TextStyle(fontWeight: FontWeight.w600, color: color ?? (isRed ? Colors.red : AppColors.textPrimary), fontSize: 13)),
     ],
   );
 }

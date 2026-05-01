@@ -21,7 +21,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -103,6 +103,27 @@ class DatabaseHelper {
         print('[DB] Successfully upgraded schema to v6 - Added status to bookings');
       } catch (e) {
         print('[DB] Upgrade warning v6: $e');
+      }
+    }
+
+    if (oldVersion < 7) {
+      // Upgrade to v7: Add vouchers table for dodge ball rewards
+      try {
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS vouchers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL,
+            percent_discount INTEGER NOT NULL,
+            earned_score INTEGER NOT NULL,
+            is_used INTEGER DEFAULT 0,
+            used_at TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
+          )
+        ''');
+        print('[DB] Successfully upgraded schema to v7 - Added vouchers table');
+      } catch (e) {
+        print('[DB] Upgrade warning v7: $e');
       }
     }
   }
@@ -242,6 +263,20 @@ class DatabaseHelper {
         position INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (lapangan_id) REFERENCES lapangans (id) ON DELETE CASCADE
+      )
+    ''');
+
+    // 10. Tabel Vouchers (for dodge ball score rewards)
+    await db.execute('''
+      CREATE TABLE vouchers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT NOT NULL,
+        percent_discount INTEGER NOT NULL,
+        earned_score INTEGER NOT NULL,
+        is_used INTEGER DEFAULT 0,
+        used_at TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (username) REFERENCES users (username) ON DELETE CASCADE
       )
     ''');
 

@@ -3,6 +3,8 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../controllers/voucher_controller.dart';
+import '../models/voucher_model.dart';
 
 class DodgeBallScreen extends StatefulWidget {
   const DodgeBallScreen({super.key});
@@ -39,6 +41,10 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
   bool _isPlaying = false;
   bool _isGameOver = false;
   bool _isNewBest = false;
+
+  // --- VOUCHER SYSTEM ---
+  final VoucherController _voucherController = VoucherController();
+  VoucherModel? _earnedVoucher;
 
   @override
   void didChangeDependencies() {
@@ -173,7 +179,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     });
   }
 
-  void _gameOver() {
+  void _gameOver() async {
     _gameTimer?.cancel();
     setState(() {
       _isPlaying = false;
@@ -184,6 +190,60 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
         _saveHighScore(_highScore);
       }
     });
+
+    // Award voucher if score is high enough
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final username = prefs.getString('username') ?? 'guest';
+      
+      final voucher = await _voucherController.awardVoucherFromDodgeBall(username, _score);
+      if (mounted && voucher != null) {
+        setState(() => _earnedVoucher = voucher);
+        _showVoucherRewardDialog(voucher);
+      }
+    } catch (e) {
+      print('[DodgeBall] Error awarding voucher: $e');
+    }
+  }
+
+  void _showVoucherRewardDialog(VoucherModel voucher) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('🎉 Voucher Reward!', textAlign: TextAlign.center),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 16),
+            Text(
+              '${voucher.percentDiscount}% OFF',
+              style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: Colors.green),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Score: ${voucher.earnedScore}',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Voucher ini bisa digunakan 1x saat booking',
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // --- CUSTOM WIDGET BOLA ---
@@ -296,6 +356,24 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
                       Text("Score: $_score",
                           style: const TextStyle(color: Colors.white70, fontSize: 24)),
                       const SizedBox(height: 8),
+                      if (_earnedVoucher != null) ...[
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withOpacity(0.2),
+                            border: Border.all(color: Colors.green, width: 2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Column(
+                            children: [
+                              const Text('🎉 Voucher Earned!', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              Text('${_earnedVoucher!.percentDiscount}% OFF', style: const TextStyle(color: Colors.green, fontSize: 24, fontWeight: FontWeight.bold)),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

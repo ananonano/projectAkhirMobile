@@ -9,6 +9,7 @@ import '../controllers/time_controller.dart';
 import '../theme/app_theme.dart';
 import '../database/database.dart';
 import '../models/user_model.dart';
+import '../widgets/user_vouchers_widget.dart';
 import 'login_screen.dart';
 import 'dodge_ball_screen.dart';
 import 'edit_profile_screen.dart';
@@ -92,6 +93,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
         print('[ProfileScreen] Error loading user from database: $e');
       }
     }
+  }
+
+  void _showVouchersDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.local_offer_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 10),
+            Text(
+              'Voucher Saya',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: UserVouchersWidget(username: _username),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text(
+              'Tutup',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _pickImage() async {
@@ -508,6 +550,42 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                   const SizedBox(height: 24),
                   const Text(
+                    'Reward & Voucher',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  _buildMenuCard(
+                    Icons.local_offer_rounded,
+                    'Voucher Saya',
+                    'Lihat voucher yang kamu dapatkan',
+                    Colors.orange,
+                    _showVouchersDialog,
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  _buildMenuCard(
+                    Icons.sports_esports_rounded,
+                    'Main Dodge Ball',
+                    'Hindari bola musuh & cetak High Score!',
+                    Colors.purpleAccent,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DodgeBallScreen(),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 24),
+                  const Text(
                     'Menu Tugas TPM',
                     style: TextStyle(
                       fontSize: 16,
@@ -533,21 +611,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     'Keluar dari sesi saat ini',
                     Colors.redAccent,
                     _logout,
-                  ),
-
-                  _buildMenuCard(
-                    Icons.sports_esports_rounded,
-                    'Main Dodge Ball',
-                    'Hindari bola musuh & cetak High Score!',
-                    Colors.purpleAccent,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const DodgeBallScreen(),
-                        ),
-                      );
-                    },
                   ),
 
                   const SizedBox(height: 30),

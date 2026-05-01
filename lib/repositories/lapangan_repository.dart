@@ -54,4 +54,15 @@ class LapanganRepository {
     final database = await _db.database;
     return database.delete('lapangans', where: 'id = ?', whereArgs: [id]);
   }
+
+  // Update lapangan berdasarkan ID
+  Future<int> updateLapangan(LapanganModel lapangan) async {
+    final database = await _db.database;
+    return database.update(
+      'lapangans',
+      lapangan.toMap(),
+      where: 'id = ?',
+      whereArgs: [lapangan.id],
+    );
+  }
 }

@@ -42,7 +42,7 @@ class GeminiService {
         return 'Gagal dari server: ${errorData['error']['message']}';
       }
     } catch (e) {
-      return 'Waduh ada error jaringan bre: $e';
+      return 'Jaringan Error!: $e';
     }
   }
 }

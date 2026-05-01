@@ -9,6 +9,7 @@ import '../repositories/booking_repository.dart';
 import 'login_screen.dart';
 import 'revenue_report_screen.dart';
 import 'admin_bookings_screen.dart';
+import 'admin_vouchers_screen.dart';
 
 // ==========================================
 // 1. HALAMAN UTAMA DASHBOARD ADMIN
@@ -87,46 +88,74 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     color: AppColors.primary.withOpacity(0.05),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const RevenueReportScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.analytics_rounded),
-                            label: const Text('Revenue'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green,
-                              foregroundColor: Colors.white,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 140,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const RevenueReportScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.analytics_rounded, size: 18),
+                              label: const Text('Revenue', style: TextStyle(fontSize: 13)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const AdminBookingsScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.event_available_rounded),
-                            label: const Text('Bookings'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue,
-                              foregroundColor: Colors.white,
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 140,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AdminBookingsScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.event_available_rounded, size: 18),
+                              label: const Text('Bookings', style: TextStyle(fontSize: 13)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 140,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AdminVouchersScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.local_offer_rounded, size: 18),
+                              label: const Text('Vouchers', style: TextStyle(fontSize: 13)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   
@@ -183,14 +212,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 ],
                               ),
                             ),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-                              onPressed: () async {
-                                if (lap.id != null) {
-                                  await _controller.deleteLapangan(lap.id!);
-                                  _fetchLapangans();
-                                }
-                              },
+                            trailing: PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert_rounded),
+                              itemBuilder: (BuildContext context) => [
+                                PopupMenuItem<String>(
+                                  value: 'edit',
+                                  child: const Row(children: [Icon(Icons.edit_rounded, size: 18), SizedBox(width: 8), Text('Edit')]),
+                                  onTap: () async {
+                                    await Navigator.push(context, MaterialPageRoute(builder: (_) => FormLapanganScreen(lapangan: lap)));
+                                    _fetchLapangans();
+                                  },
+                                ),
+                                PopupMenuItem<String>(
+                                  value: 'delete',
+                                  child: const Row(children: [Icon(Icons.delete_outline_rounded, size: 18, color: Colors.red), SizedBox(width: 8), Text('Hapus', style: TextStyle(color: Colors.red))]),
+                                  onTap: () async {
+                                    if (lap.id != null) {
+                                      await _controller.deleteLapangan(lap.id!);
+                                      _fetchLapangans();
+                                    }
+                                  },
+                                ),
+                              ],
                             ),
                           ),
                         );
@@ -216,7 +259,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 // 2. HALAMAN FORM TAMBAH LAPANGAN (CRUD & MULTI-IMAGE)
 // ==========================================
 class FormLapanganScreen extends StatefulWidget {
-  const FormLapanganScreen({super.key});
+  final LapanganModel? lapangan;
+  const FormLapanganScreen({super.key, this.lapangan});
 
   @override
   State<FormLapanganScreen> createState() => _FormLapanganScreenState();
@@ -234,6 +278,34 @@ class _FormLapanganScreenState extends State<FormLapanganScreen> {
   String _selectedJenis = 'FUTSAL';
   final List<String> _jenisOptions = ['FUTSAL', 'BASKETBALL', 'BADMINTON', 'MINI_SOCCER', 'TENNIS'];
   final List<String> _selectedImagePaths = [];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.lapangan != null) {
+      _namaController.text = widget.lapangan!.namaLapangan;
+      _descController.text = widget.lapangan!.description ?? '';
+      _hargaController.text = widget.lapangan!.harga.toString();
+      _alamatController.text = widget.lapangan!.address ?? '';
+      _latController.text = widget.lapangan!.lat.toString();
+      _lngController.text = widget.lapangan!.lng.toString();
+      _selectedJenis = widget.lapangan!.jenis;
+      if ((widget.lapangan!.image ?? '').isNotEmpty) {
+        _selectedImagePaths.addAll((widget.lapangan!.image ?? '').split(','));
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _namaController.dispose();
+    _descController.dispose();
+    _hargaController.dispose();
+    _alamatController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickMultipleImages() async {
     final ImagePicker picker = ImagePicker();
@@ -254,6 +326,7 @@ class _FormLapanganScreenState extends State<FormLapanganScreen> {
     }
 
     final lapangan = LapanganModel(
+      id: widget.lapangan?.id,
       namaLapangan: _namaController.text,
       description: _descController.text,
       image: _selectedImagePaths.join(','),
@@ -265,12 +338,23 @@ class _FormLapanganScreenState extends State<FormLapanganScreen> {
       lng: double.tryParse(_lngController.text) ?? 0.0,
     );
 
-    await _controller.addLapangan(lapangan);
+    if (widget.lapangan == null) {
+      await _controller.addLapangan(lapangan);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mantap! Lapangan berhasil ditambahkan.'), backgroundColor: Colors.green),
+        );
+      }
+    } else {
+      await _controller.updateLapangan(lapangan);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Mantap! Lapangan berhasil diperbarui.'), backgroundColor: Colors.green),
+        );
+      }
+    }
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mantap! Lapangan berhasil ditambahkan.'), backgroundColor: Colors.green),
-      );
       Navigator.pop(context);
     }
   }
@@ -298,7 +382,7 @@ class _FormLapanganScreenState extends State<FormLapanganScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Tambah Lapangan'),
+        title: Text(widget.lapangan == null ? 'Tambah Lapangan' : 'Edit Lapangan'),
         backgroundColor: AppColors.surface,
       ),
       body: SingleChildScrollView(
@@ -387,7 +471,10 @@ class _FormLapanganScreenState extends State<FormLapanganScreen> {
               height: 52,
               child: ElevatedButton(
                 onPressed: _simpanLapangan,
-                child: const Text('Simpan Lapangan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                child: Text(
+                  widget.lapangan == null ? 'Tambah Lapangan' : 'Perbarui Lapangan',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
               ),
             ),
             const SizedBox(height: 30),

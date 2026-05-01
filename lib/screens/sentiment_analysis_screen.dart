@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../controllers/sentiment_controller.dart';
+import '../theme/app_theme.dart';
 
 class SentimentAnalysisScreen extends StatefulWidget {
   const SentimentAnalysisScreen({super.key});
@@ -8,118 +10,123 @@ class SentimentAnalysisScreen extends StatefulWidget {
 }
 
 class _SentimentAnalysisScreenState extends State<SentimentAnalysisScreen> {
-  final TextEditingController _inputController = TextEditingController();
-  String _resultLabel = "Belum ada analisis";
-  Color _resultColor = Colors.grey;
-  IconData _resultIcon = Icons.sentiment_neutral;
-
-  // Kamus kata kunci sederhana (Simulasi Model ML)
-  final List<String> _positiveWords = ['bagus', 'puas', 'mantap', 'keren', 'bersih', 'nyaman', 'rekomendasi', 'murah', 'ramah', 'juara'];
-  final List<String> _negativeWords = ['jelek', 'kotor', 'mahal', 'kecewa', 'panas', 'rusak', 'kasar', 'lambat', 'buruk', 'nyesel'];
+  final _inputController = TextEditingController();
+  final _controller = SentimentController();
+  SentimentResult? _result;
 
   void _analyzeSentiment() {
-    String text = _inputController.text.toLowerCase();
+    final text = _inputController.text;
     if (text.isEmpty) return;
+    setState(() => _result = _controller.analyze(text));
+  }
 
-    int score = 0;
-    
-    // Logika perhitungan skor
-    for (var word in _positiveWords) {
-      if (text.contains(word)) score++;
+  Color get _resultColor {
+    if (_result == null) return AppColors.textSecondary;
+    switch (_result!.type) {
+      case SentimentType.positive: return AppColors.success;
+      case SentimentType.negative: return Colors.red;
+      case SentimentType.neutral: return Colors.orange;
     }
-    for (var word in _negativeWords) {
-      if (text.contains(word)) score--;
-    }
+  }
 
-    setState(() {
-      if (score > 0) {
-        _resultLabel = "SENTIMEN POSITIF\n(User Puas)";
-        _resultColor = Colors.green;
-        _resultIcon = Icons.sentiment_very_satisfied;
-      } else if (score < 0) {
-        _resultLabel = "SENTIMEN NEGATIF\n(User Kecewa)";
-        _resultColor = Colors.red;
-        _resultIcon = Icons.sentiment_very_dissatisfied;
-      } else {
-        _resultLabel = "SENTIMEN NETRAL\n(Ulasan Standar)";
-        _resultColor = Colors.orange;
-        _resultIcon = Icons.sentiment_neutral;
-      }
-    });
+  IconData get _resultIcon {
+    if (_result == null) return Icons.sentiment_neutral_rounded;
+    switch (_result!.type) {
+      case SentimentType.positive: return Icons.sentiment_very_satisfied_rounded;
+      case SentimentType.negative: return Icons.sentiment_very_dissatisfied_rounded;
+      case SentimentType.neutral: return Icons.sentiment_neutral_rounded;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Analisis Sentimen ML'),
-        backgroundColor: Colors.purple,
-        foregroundColor: Colors.white,
-      ),
+      backgroundColor: AppColors.background,
+      appBar: AppBar(title: const Text('Analisis Sentimen')),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Analisis Kepuasan Pengguna",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            // Header info
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(14)),
+                    child: const Icon(Icons.analytics_rounded, color: Colors.white, size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Analisis Kepuasan', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
+                        SizedBox(height: 3),
+                        Text('Deteksi sentimen ulasan lapangan secara otomatis', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
+
+            const SizedBox(height: 24),
+            const Text('Masukkan Ulasan', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 10),
-            const Text(
-              "Masukkan ulasan lapangan untuk mendeteksi emosi pengguna secara otomatis.",
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 20),
-            
-            // Input Field
             TextField(
               controller: _inputController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                hintText: "Contoh: Lapangannya bagus dan bersih banget, saya puas!",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                filled: true,
-                fillColor: Colors.purple[50],
+              maxLines: 5,
+              decoration: const InputDecoration(
+                hintText: 'Contoh: Lapangannya bagus dan bersih banget, saya puas!',
               ),
             ),
-            const SizedBox(height: 20),
-            
-            // Tombol Analisis
+            const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 52,
               child: ElevatedButton.icon(
                 onPressed: _analyzeSentiment,
-                icon: const Icon(Icons.analytics_outlined),
-                label: const Text("MULAI ANALISIS"),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.purple,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+                icon: const Icon(Icons.search_rounded, size: 20),
+                label: const Text('Analisis Sekarang', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
               ),
             ),
-            const SizedBox(height: 40),
-            
-            // Hasil Analisis
-            Container(
+
+            const SizedBox(height: 28),
+
+            // Result
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
               width: double.infinity,
-              padding: const EdgeInsets.all(30),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: _resultColor.withOpacity(0.1),
+                color: _resultColor.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _resultColor, width: 2),
+                border: Border.all(color: _resultColor.withOpacity(0.3), width: 1.5),
               ),
               child: Column(
                 children: [
-                  Icon(_resultIcon, size: 80, color: _resultColor),
-                  const SizedBox(height: 15),
+                  Icon(_resultIcon, size: 72, color: _resultColor),
+                  const SizedBox(height: 14),
                   Text(
-                    _resultLabel,
+                    _result?.label ?? 'Belum ada analisis',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: _resultColor),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _resultColor, height: 1.4),
                   ),
+                  if (_result != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Skor: ${_result!.score > 0 ? '+' : ''}${_result!.score}',
+                      style: TextStyle(color: _resultColor.withOpacity(0.7), fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ],
                 ],
               ),
             ),

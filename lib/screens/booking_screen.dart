@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
-import '../database/database.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../controllers/booking_controller.dart';
+import '../models/booking_model.dart';
+import '../theme/app_theme.dart';
+import 'receipt_screen.dart';
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});
@@ -9,89 +14,180 @@ class BookingScreen extends StatefulWidget {
 }
 
 class _BookingScreenState extends State<BookingScreen> {
-  List<Map<String, dynamic>> _bookings = [];
-  bool _isLoading = true;
+  final BookingController _controller = BookingController();
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchBookings();
-  }
-
-  // Fungsi narik data dari SQLite
-  Future<void> _fetchBookings() async {
-    final db = await DatabaseHelper.instance.database;
-    // Sebagai contoh awal, kita tarik data list lapangan yang ada di database
-    final data = await db.query('lapangans');
-    setState(() {
-      _bookings = data;
-      _isLoading = false;
-    });
+  Future<List<BookingModel>> _getMyBookings() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id') ?? 0;
+    return _controller.getMyBookings(userId);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text(
-          'Riwayat Booking',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: Colors.blueAccent,
-        foregroundColor: Colors.white,
+        title: const Text('Riwayat Booking'),
+        automaticallyImplyLeading: false,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _bookings.isEmpty
-          ? const Center(child: Text('Belum ada riwayat pesanan nih bre.'))
-          : ListView.builder(
-              padding: const EdgeInsets.all(12),
-              itemCount: _bookings.length,
-              itemBuilder: (context, index) {
-                final booking = _bookings[index];
-                return Card(
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15),
+      body: FutureBuilder<List<BookingModel>>(
+        future: _getMyBookings(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      color: AppColors.inputFill,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Icon(Icons.receipt_long_rounded, size: 40, color: AppColors.textSecondary),
                   ),
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.all(16),
-                    leading: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.blue[50],
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.sports_soccer,
-                        color: Colors.blueAccent,
-                        size: 30,
-                      ),
-                    ),
-                    // TAMBAHKAN '??' DI SINI BRE
-                    title: Text(
-                      booking['nama']?.toString() ?? 'Nama Lapangan Kosong',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Padding(
-                      padding: const EdgeInsets.only(top: 8.0),
-                      child: Text(
-                        'Tarif: Rp ${booking['harga']?.toString() ?? '0'}/jam',
-                      ),
-                    ),
-                    trailing: const Chip(
-                      label: Text(
-                        'Selesai',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                      backgroundColor: Colors.green,
+                  const SizedBox(height: 16),
+                  const Text('Belum ada booking', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const SizedBox(height: 6),
+                  const Text('Booking lapangan pertamamu sekarang!', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                ],
+              ),
+            );
+          }
+
+          final bookings = snapshot.data!;
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: bookings.length,
+            itemBuilder: (context, index) {
+              final item = bookings[index];
+              final isSelesai = _controller.isBookingSelesai(item.tanggal, item.jam);
+              return _buildBookingCard(item, isSelesai);
+            },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBookingCard(BookingModel item, bool isSelesai) {
+    return GestureDetector(
+      onTap: () => Navigator.push(context, MaterialPageRoute(
+        builder: (_) => ReceiptScreen(
+          namaLapangan: item.namaLapangan,
+          tanggal: item.tanggal,
+          jam: item.jam,
+          totalDibayar: item.totalHargaInt.toDouble(),
+          mataUang: 'IDR',
+          metodeBayar: 'Telah Dibayar',
+        ),
+      )),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 10, offset: Offset(0, 3))],
+        ),
+        child: Column(
+          children: [
+            // Status bar top
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelesai ? AppColors.inputFill : AppColors.success.withOpacity(0.08),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    item.namaLapangan,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15,
+                      color: isSelesai ? AppColors.textSecondary : AppColors.textPrimary,
                     ),
                   ),
-                );
-              },
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isSelesai ? AppColors.textSecondary.withOpacity(0.15) : AppColors.success.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(50),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isSelesai ? Icons.check_circle_outline_rounded : Icons.schedule_rounded,
+                          size: 12,
+                          color: isSelesai ? AppColors.textSecondary : AppColors.success,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          isSelesai ? 'Selesai' : 'Akan Datang',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: isSelesai ? AppColors.textSecondary : AppColors.success,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
+
+            // Detail
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      _infoChip(Icons.calendar_today_rounded, item.tanggal),
+                      const SizedBox(width: 12),
+                      Expanded(child: _infoChip(Icons.access_time_rounded, item.jam)),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Total Bayar', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                      Text(
+                        'Rp ${NumberFormat("#,###").format(item.totalHargaInt)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: isSelesai ? AppColors.textSecondary : AppColors.primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _infoChip(IconData icon, String text) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: AppColors.textSecondary),
+        const SizedBox(width: 5),
+        Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary), overflow: TextOverflow.ellipsis),
+      ],
     );
   }
 }

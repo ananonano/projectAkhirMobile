@@ -1,20 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'services/notification_service.dart';
 import 'screens/login_screen.dart';
+import 'theme/app_theme.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MainApp());
+
+  // Load file .env
+  await dotenv.load(fileName: ".env");
+
+  // Inisialisasi notifikasi lokal
+  await NotificationService.instance.init();
+  await NotificationService.instance.requestPermission();
+
+  runApp(const MyApp());
 }
 
-class MainApp extends StatelessWidget {
-  const MainApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Lapang.in Mobile',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      title: 'Lapang.in',
+      theme: AppTheme.lightTheme,
       home: const LoginScreen(),
     );
   }

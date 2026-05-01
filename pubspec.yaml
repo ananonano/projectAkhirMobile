@@ -40,10 +40,10 @@ dependencies:
   shared_preferences: ^2.2.2 # Buat nyimpen status session login
 
   #biometric
-  local_auth: ^2.2.0
+  local_auth: ^2.1.7
 
   #HTTP Request
-  http: ^1.2.0
+  http: ^1.6.0
 
   #LBS & Peta
   geolocator: ^13.0.0
@@ -51,7 +51,7 @@ dependencies:
   latlong2: ^0.9.0
 
   #Sensor
-  sensors_plus: ^5.0.1
+  sensors_plus: ^7.0.0
 
   #AI & LLM
   google_generative_ai: ^0.4.7
@@ -60,6 +60,14 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   intl: ^0.20.2
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  flutter_dotenv: ^6.0.1
+  #Notifikasi Lokal
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
+
+  image_picker: ^1.2.2
 
 dev_dependencies:
   flutter_test:
@@ -83,7 +91,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
+  assets:
+    - .env
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

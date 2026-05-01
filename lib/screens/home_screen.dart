@@ -98,63 +98,61 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- HERO HEADER (fixed, tidak scroll) ---
+            // --- HEADER WITH TITLE AND SEARCH ---
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.primary, AppColors.primaryDark],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
+              color: AppColors.background,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Title
                   const Text(
-                    'Temukan Lapangan,',
+                    'Cari Lapangan Terdekat',
                     style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800),
-                  ),
-                  const Text(
-                    'Mulai Permainan! 🏆',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Booking lapangan olahraga favoritmu dengan mudah',
-                    style: TextStyle(
-                        color: Colors.white.withOpacity(0.85), fontSize: 13),
+                      color: AppColors.primaryDark,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  // Search bar inline di header
+                  
+                  // Search bar with border
                   Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border, width: 1),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        )
+                      ],
                     ),
                     child: TextField(
                       controller: _locationController,
                       decoration: InputDecoration(
-                        hintText: 'Cari berdasarkan lokasi...',
+                        hintText: 'Cari venue atau cabang olahraga...',
+                        hintStyle: const TextStyle(
+                          color: Color(0xFF6B7280),
+                          fontSize: 14,
+                        ),
                         prefixIcon: const Icon(Icons.search_rounded,
-                            color: AppColors.primary),
+                            color: AppColors.textSecondary, size: 20),
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.tune_rounded,
-                              color: AppColors.primary),
+                              color: AppColors.primary, size: 20),
                           onPressed: _handleSearch,
                         ),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
-                        fillColor: Colors.transparent,
                         filled: false,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                       ),
                       onSubmitted: (_) => _handleSearch(),
                     ),
@@ -163,25 +161,85 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // --- FILTER CHIPS ---
+            // --- SPORT CATEGORIES SECTION ---
             Container(
-              color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: SizedBox(
-                height: 36,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _sportTypes.length + 1,
-                  itemBuilder: (context, index) {
-                    if (index == 0) {
-                      return _buildChip('Semua', null, _sportType == null);
-                    }
-                    final sport = _sportTypes[index - 1];
-                    return _buildChip(
-                        sport['label'], sport['key'], _sportType == sport['key']);
-                  },
-                ),
+              width: double.infinity,
+              color: AppColors.background,
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    height: 88,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: _sportTypes.length,
+                      itemBuilder: (context, index) {
+                        final sport = _sportTypes[index];
+                        final isSelected = _sportType == sport['key'];
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() => _sportType = sport['key']);
+                            _fetchLapangans(
+                              type: sport['key'],
+                              location: _locationController.text,
+                            );
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(right: index == _sportTypes.length - 1 ? 0 : 12),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: ShapeDecoration(
+                                    color: isSelected ? AppColors.primary : Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      side: BorderSide(
+                                        color: AppColors.border,
+                                        width: 1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    shadows: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.08),
+                                        blurRadius: 2,
+                                        offset: const Offset(0, 1),
+                                      )
+                                    ],
+                                  ),
+                                  child: Icon(
+                                    _getSportIcon(sport['key']),
+                                    size: 28,
+                                    color: isSelected ? Colors.white : AppColors.primaryDark,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: 64,
+                                  child: Text(
+                                    sport['label'],
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
             ),
 
@@ -208,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                           itemCount: _lapangans.length,
                           itemBuilder: (context, index) =>
                               _buildFieldCard(_lapangans[index], fmt),
@@ -220,32 +278,21 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildChip(String label, String? key, bool isSelected) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => _sportType = key);
-        _fetchLapangans(type: key, location: _locationController.text);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(right: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : AppColors.inputFill,
-          borderRadius: BorderRadius.circular(50),
-          border: Border.all(
-              color: isSelected ? AppColors.primary : AppColors.border),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? Colors.white : AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
+  IconData _getSportIcon(String sportKey) {
+    switch (sportKey) {
+      case 'FUTSAL':
+        return Icons.sports_soccer_rounded;
+      case 'BASKETBALL':
+        return Icons.sports_basketball_rounded;
+      case 'BADMINTON':
+        return Icons.sports_rounded;
+      case 'TENNIS':
+        return Icons.sports_tennis_rounded;
+      case 'MINI_SOCCER':
+        return Icons.sports_soccer_rounded;
+      default:
+        return Icons.sports_rounded;
+    }
   }
 
   Widget _buildFieldCard(LapanganModel lapangan, NumberFormat fmt) {
@@ -265,107 +312,169 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: const [
+          border: Border.all(color: AppColors.border, width: 1),
+          boxShadow: [
             BoxShadow(
-                color: AppColors.cardShadow,
-                blurRadius: 12,
-                offset: Offset(0, 4))
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            // Gambar
-            Stack(
-              children: [
-                img.isEmpty ? _placeholder(180) : _buildImage(img),
-                Positioned(
-                  top: 12,
-                  left: 12,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    child: Text(lapangan.jenisLabel,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ],
-            ),
-            // Info
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(lapangan.namaLapangan,
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 5),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_rounded,
-                          size: 13, color: AppColors.textSecondary),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                            lapangan.address ?? 'Alamat belum diatur',
-                            style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Mulai dari',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary)),
-                          Text(fmt.format(lapangan.harga),
-                              style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.primary)),
-                          const Text('/jam',
-                              style: TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary)),
-                        ],
-                      ),
-                      Container(
+            // Image section
+            ClipRRect(
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(15),
+                bottomLeft: Radius.circular(15),
+              ),
+              child: SizedBox(
+                width: 140,
+                height: 140,
+                child: Stack(
+                  children: [
+                    img.isEmpty
+                        ? Container(
+                            color: AppColors.inputFill,
+                            child: const Center(
+                              child: Icon(Icons.image_not_supported_rounded,
+                                  size: 36, color: AppColors.textSecondary),
+                            ),
+                          )
+                        : _buildImage(img, height: 140),
+                    // Rating badge
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 18, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(50),
+                          horizontal: 8,
+                          vertical: 4,
                         ),
-                        child: const Text('Book Now',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700)),
+                        decoration: ShapeDecoration(
+                          color: Colors.white.withOpacity(0.95),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.star_rounded,
+                                size: 14, color: Color(0xFFF4A261)),
+                            const SizedBox(width: 2),
+                            Text(
+                              '4.8',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // Info section
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          lapangan.namaLapangan,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            const Icon(Icons.location_on_rounded,
+                                size: 12, color: AppColors.textSecondary),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: Text(
+                                lapangan.address ?? 'Lokasi tidak diatur',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Mulai dari',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                            Text(
+                              fmt.format(lapangan.harga),
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                            const Text(
+                              '/jam',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: AppColors.accent,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text(
+                            'Pesan',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

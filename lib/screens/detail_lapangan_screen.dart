@@ -155,7 +155,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
-              primary: Color(0xFFF64E42),
+              primary: Color(0xFF597D60),
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black,
@@ -291,7 +291,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                           index < selectedRating
                               ? Icons.star_rounded
                               : Icons.star_outline_rounded,
-                          color: const Color(0xFFF64E42),
+                          color: const Color(0xFF597D60),
                           size: 32,
                         ),
                       ),
@@ -315,7 +315,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: const BorderSide(
-                        color: Color(0xFFF64E42),
+                        color: Color(0xFF597D60),
                         width: 2,
                       ),
                     ),
@@ -336,7 +336,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
               },
               child: const Text(
                 'Kirim',
-                style: TextStyle(color: Color(0xFFF64E42)),
+                style: TextStyle(color: Color(0xFF597D60)),
               ),
             ),
           ],
@@ -398,7 +398,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
               : (index < rating
                   ? Icons.star_half_rounded
                   : Icons.star_outline_rounded),
-          color: const Color(0xFFF64E42),
+          color: const Color(0xFF597D60),
           size: 18,
         );
       }),
@@ -429,10 +429,10 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
               else
                 CircleAvatar(
                   radius: 18,
-                  backgroundColor: const Color(0xFFF64E42).withOpacity(0.2),
+                  backgroundColor: const Color(0xFF597D60).withOpacity(0.2),
                   child: const Icon(
                     Icons.person_rounded,
-                    color: Color(0xFFF64E42),
+                    color: Color(0xFF597D60),
                   ),
                 ),
               const SizedBox(width: 12),
@@ -532,21 +532,21 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF64E42).withOpacity(0.1),
+                    color: const Color(0xFF597D60).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Row(
                     children: [
                       Icon(
                         Icons.add_rounded,
-                        color: Color(0xFFF64E42),
+                        color: Color(0xFF597D60),
                         size: 18,
                       ),
                       SizedBox(width: 4),
                       Text(
                         'Rating',
                         style: TextStyle(
-                          color: Color(0xFFF64E42),
+                          color: Color(0xFF597D60),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
                         ),
@@ -561,7 +561,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
           if (_isLoadingReviews)
             const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFFF64E42),
+                color: Color(0xFF597D60),
               ),
             )
           else if (_reviews.isEmpty)
@@ -650,7 +650,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 20, color: const Color(0xFFF64E42)),
+          Icon(icon, size: 20, color: const Color(0xFF597D60)),
           const SizedBox(width: 8),
           Text(
             label,
@@ -678,7 +678,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
           : (hargaPerJam * _selectedTimes.length);
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFFF4F1EC),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -686,11 +686,11 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: CircleAvatar(
-            backgroundColor: Colors.white.withOpacity(0.9),
+            backgroundColor: Colors.white.withOpacity(0.95),
             child: IconButton(
               icon: const Icon(
                 Icons.arrow_back_ios_new_rounded,
-                color: Colors.black,
+                color: const Color(0xFF416448),
                 size: 20,
               ),
               onPressed: () => Navigator.pop(context),
@@ -781,7 +781,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                           height: 10,
                           decoration: BoxDecoration(
                             color: _currentImageIndex == index
-                                ? const Color(0xFFF64E42)
+                                ? const Color(0xFF597D60)
                                 : Colors.white.withOpacity(0.6),
                             borderRadius: BorderRadius.circular(5),
                           ),
@@ -802,17 +802,17 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                       vertical: 8,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF64E42).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
+                      color: const Color(0xFF597D60).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       (widget.lapangan['jenis'] ?? 'LAINNYA')
                           .toString()
                           .replaceAll('_', ' '),
                       style: const TextStyle(
-                        color: Color(0xFFF64E42),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                        color: Color(0xFF416448),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
                       ),
                     ),
                   ),
@@ -821,8 +821,10 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                     widget.lapangan['nama_lapangan'] ?? 'Nama Lapangan',
                     style: const TextStyle(
                       fontSize: 28,
-                      fontWeight: FontWeight.w900,
+                      fontWeight: FontWeight.w700,
                       height: 1.2,
+                      color: Color(0xFF1A1C1A),
+                      letterSpacing: -0.5,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -852,7 +854,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                     children: [
                       const Icon(
                         Icons.schedule_rounded,
-                        color: Color(0xFFF64E42),
+                        color: Color(0xFF597D60),
                         size: 20,
                       ),
                       const SizedBox(width: 8),
@@ -887,11 +889,16 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                     ],
                   ),
                   const SizedBox(height: 30),
-                  const Divider(thickness: 1, color: Color(0xFFEEEEEE)),
+                  const Divider(thickness: 1, color: Color(0xFFE5E2DC)),
                   const SizedBox(height: 24),
                   const Text(
                     'Pilih Jadwal Main',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1A1C1A),
+                      letterSpacing: -0.5,
+                    ),
                   ),
                   const SizedBox(height: 20),
                   Row(
@@ -909,7 +916,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                         onPressed: _selectDateFromPicker,
                         icon: const Icon(
                           Icons.calendar_today_rounded,
-                          color: Color(0xFFF64E42),
+                          color: Color(0xFF597D60),
                           size: 22,
                         ),
                         constraints: const BoxConstraints(),
@@ -944,11 +951,11 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                             margin: const EdgeInsets.only(right: 12),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? const Color(0xFFF64E42)
+                                  ? const Color(0xFF597D60)
                                   : Colors.white,
                               border: Border.all(
                                 color: isSelected
-                                    ? const Color(0xFFF64E42)
+                                    ? const Color(0xFF597D60)
                                     : Colors.grey.shade300,
                               ),
                               borderRadius: BorderRadius.circular(15),
@@ -1003,7 +1010,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                       ),
                       child: const Center(
                         child: CircularProgressIndicator(
-                          color: Color(0xFFF64E42),
+                          color: Color(0xFF597D60),
                         ),
                       ),
                     )
@@ -1036,13 +1043,13 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                               color: isDisabled
                                   ? Colors.grey[200]
                                   : (isSelected
-                                        ? const Color(0xFFF64E42)
+                                        ? const Color(0xFF597D60)
                                         : Colors.white),
                               border: Border.all(
                                 color: isDisabled
                                     ? Colors.transparent
                                     : (isSelected
-                                          ? const Color(0xFFF64E42)
+                                          ? const Color(0xFF597D60)
                                           : Colors.grey.shade300),
                               ),
                               borderRadius: BorderRadius.circular(10),
@@ -1115,7 +1122,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                         style: const TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          color: Color(0xFFF64E42),
+                          color: Color(0xFF597D60),
                         ),
                       ),
                       if (_selectedTimes.isEmpty)
@@ -1158,15 +1165,16 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF64E42),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
+                    backgroundColor: const Color(0xFFF4A261),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
                   ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
                 child: const Row(
                   children: [
                     Text(

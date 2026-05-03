@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:projectakhir/repositories/booking_repository.dart';
+import 'package:projectakhir/theme/app_theme.dart';
+import '../widgets/admin_drawer.dart';
 
 class RevenueReportScreen extends StatefulWidget {
-  const RevenueReportScreen({Key? key}) : super(key: key);
+  const RevenueReportScreen({super.key});
 
   @override
   State<RevenueReportScreen> createState() => _RevenueReportScreenState();
@@ -11,34 +13,43 @@ class RevenueReportScreen extends StatefulWidget {
 
 class _RevenueReportScreenState extends State<RevenueReportScreen> {
   final BookingRepository _bookingRepo = BookingRepository();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Laporan Revenue Terperinci'),
-        backgroundColor: const Color(0xFFF64E42),
-        elevation: 0,
+      key: _scaffoldKey,
+      backgroundColor: const Color(0xFFFAFAF5),
+      drawer: AdminDrawer(
+        activeMenu: AdminMenuIndex.revenue,
+        scaffoldKey: _scaffoldKey,
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          setState(() {});
-          await Future.delayed(const Duration(milliseconds: 500));
-        },
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+      body: Stack(
+        children: [
+          // Konten utama dengan padding atas untuk header
+          Padding(
+            padding: const EdgeInsets.only(top: 80),
+            child: RefreshIndicator(
+              onRefresh: () async {
+                setState(() {});
+                await Future.delayed(const Duration(milliseconds: 500));
+              },
+              color: AppColors.primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
                 // Ringkasan Total
                 const Text(
                   'Ringkasan',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 16,
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1C1A),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -48,7 +59,9 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
                   future: _bookingRepo.getRevenueBreakdown(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      );
                     }
 
                     final data = snapshot.data ?? {};
@@ -57,113 +70,127 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
                     final partner = data['partnerRevenue'] as int? ?? 0;
 
                     return Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFF64E42), Color(0xFFD84430)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                      clipBehavior: Clip.antiAlias,
+                      decoration: ShapeDecoration(
+                        color: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          side: const BorderSide(
+                            width: 1,
+                            color: Color(0xFFC2C8BF),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
+                        shadows: [
                           BoxShadow(
-                            color: const Color(0xFFF64E42).withOpacity(0.3),
-                            blurRadius: 15,
-                            offset: const Offset(0, 8),
+                            color: const Color(0x0C000000),
+                            blurRadius: 2,
+                            offset: const Offset(0, 1),
+                            spreadRadius: 0,
                           ),
                         ],
                       ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Total Pendapatan',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Total Pendapatan',
+                                  style: TextStyle(
+                                    color: Color(0xFF78716C),
+                                    fontSize: 12,
+                                    fontFamily: 'Lexend',
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                'Rp ${NumberFormat('#,###').format(total)}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                                Text(
+                                  'Rp ${NumberFormat('#,###').format(total)}',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1A1C1A),
+                                    fontSize: 18,
+                                    fontFamily: 'Lexend',
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 16),
-                          Container(height: 1, color: Colors.white30),
-                          const SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Komisi App (10%)',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Container(
+                              width: double.infinity,
+                              height: 1,
+                              color: const Color(0xFFE8E8E4),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  spacing: 4,
+                                  children: [
+                                    const Text(
+                                      'Komisi App (10%)',
+                                      style: TextStyle(
+                                        color: Color(0xFF78716C),
+                                        fontSize: 12,
+                                        fontFamily: 'Lexend',
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Rp ${NumberFormat('#,###').format(appFee)}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                    Text(
+                                      'Rp ${NumberFormat('#,###').format(appFee)}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF1A1C1A),
+                                        fontSize: 16,
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                width: 1,
-                                height: 40,
-                                color: Colors.white30,
-                              ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  const Text(
-                                    'Pendapatan Partner (90%)',
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  spacing: 4,
+                                  children: [
+                                    const Text(
+                                      'Pendapatan Partner (90%)',
+                                      style: TextStyle(
+                                        color: Color(0xFF78716C),
+                                        fontSize: 12,
+                                        fontFamily: 'Lexend',
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Rp ${NumberFormat('#,###').format(partner)}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
+                                    Text(
+                                      'Rp ${NumberFormat('#,###').format(partner)}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF1A1C1A),
+                                        fontSize: 16,
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ],
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     );
                   },
                 ),
                 const SizedBox(height: 24),
 
+                const SizedBox(height: 24),
+
                 // Detail Per Lapangan
                 const Text(
                   'Revenue Per Lapangan',
                   style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
+                    fontSize: 16,
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1C1A),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -172,19 +199,24 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
                   future: _bookingRepo.getRevenuePerLapangan(),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
+                      return const Center(
+                        child: CircularProgressIndicator(color: AppColors.primary),
+                      );
                     }
 
                     if (snapshot.hasError || snapshot.data == null) {
                       return Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.1),
+                          color: const Color(0xFFFFDAD6),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           'Error: ${snapshot.error}',
-                          style: const TextStyle(color: Colors.red),
+                          style: const TextStyle(
+                            color: Color(0xFFD84040),
+                            fontFamily: 'Lexend',
+                          ),
                         ),
                       );
                     }
@@ -195,8 +227,12 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
                       return Container(
                         padding: const EdgeInsets.all(24),
                         decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: const Color(0xFFC2C8BF),
+                            width: 1,
+                          ),
                         ),
                         child: Center(
                           child: Column(
@@ -204,7 +240,7 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
                               Icon(
                                 Icons.info_outline_rounded,
                                 size: 48,
-                                color: Colors.grey[400],
+                                color: Colors.grey[300],
                               ),
                               const SizedBox(height: 12),
                               Text(
@@ -212,6 +248,7 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 14,
+                                  fontFamily: 'Lexend',
                                 ),
                               ),
                             ],
@@ -233,134 +270,151 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
                         final appFee = (revenue * 0.1).toInt();
                         final partnerRevenue = revenue - appFee;
 
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.grey[200]!,
-                              width: 1,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            bottom: index == revenueData.length - 1 ? 0 : 16,
                           ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                          child: Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: ShapeDecoration(
+                              color: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                side: const BorderSide(
+                                  width: 1,
+                                  color: Color(0xFFC2C8BF),
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              shadows: [
+                                BoxShadow(
+                                  color: const Color(0x0C000000),
+                                  blurRadius: 2,
+                                  offset: const Offset(0, 1),
+                                  spreadRadius: 0,
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                spacing: 12,
                                 children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          lapanganName,
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          spacing: 4,
+                                          children: [
+                                            Text(
+                                              lapanganName,
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontFamily: 'Lexend',
+                                                fontWeight: FontWeight.w600,
+                                                color: Color(0xFF1A1C1A),
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                            Text(
+                                              '$bookings booking',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Color(0xFF78716C),
+                                                fontFamily: 'Lexend',
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 6,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFFC5ECC9),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'Rp ${NumberFormat('#,###').format(revenue)}',
                                           style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.black87,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '$bookings booking',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600],
+                                            fontSize: 13,
+                                            fontFamily: 'Lexend',
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF416448),
                                           ),
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFF64E42)
-                                          .withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'Rp ${NumberFormat('#,###').format(revenue)}',
-                                      style: const TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFFF64E42),
-                                      ),
-                                    ),
+                                    width: double.infinity,
+                                    height: 1,
+                                    color: const Color(0xFFE8E8E4),
                                   ),
-                                ],
-                              ),
-                              const SizedBox(height: 12),
-                              Container(
-                                height: 1,
-                                color: Colors.grey[200],
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
                                     children: [
-                                      Text(
-                                        'App Fee (10%)',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        spacing: 4,
+                                        children: [
+                                          const Text(
+                                            'App Fee (10%)',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF78716C),
+                                              fontFamily: 'Lexend',
+                                            ),
+                                          ),
+                                          Text(
+                                            'Rp ${NumberFormat('#,###').format(appFee)}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontFamily: 'Lexend',
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF1A1C1A),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Rp ${NumberFormat('#,###').format(appFee)}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.orange,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        'Partner (90%)',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        'Rp ${NumberFormat('#,###').format(partnerRevenue)}',
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.green,
-                                        ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.end,
+                                        spacing: 4,
+                                        children: [
+                                          const Text(
+                                            'Partner (90%)',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Color(0xFF78716C),
+                                              fontFamily: 'Lexend',
+                                            ),
+                                          ),
+                                          Text(
+                                            'Rp ${NumberFormat('#,###').format(partnerRevenue)}',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontFamily: 'Lexend',
+                                              fontWeight: FontWeight.w600,
+                                              color: Color(0xFF1A1C1A),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         );
                       },
@@ -371,6 +425,20 @@ class _RevenueReportScreenState extends State<RevenueReportScreen> {
             ),
           ),
         ),
+      ),
+        ),
+
+          // Fixed Header Bar dengan hamburger menu
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: AdminHeaderBar(
+              title: 'Laporan Revenue',
+              scaffoldKey: _scaffoldKey,
+            ),
+          ),
+        ],
       ),
     );
   }

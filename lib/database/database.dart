@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
 import 'dart:io';
+import '../models/lapangan_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -832,5 +833,33 @@ class DatabaseHelper {
       }
     }
     return booked;
+  }
+
+  // Get all lapangan
+  Future<List<LapanganModel>> getAllLapangan() async {
+    Database db = await instance.database;
+    final List<Map<String, dynamic>> res = await db.query('lapangans');
+    return List<LapanganModel>.from(res.map((x) => LapanganModel.fromMap(x)));
+  }
+
+  // Update lapangan
+  Future<int> updateLapangan(LapanganModel lapangan) async {
+    Database db = await instance.database;
+    return await db.update(
+      'lapangans',
+      lapangan.toMap(),
+      where: 'id = ?',
+      whereArgs: [lapangan.id],
+    );
+  }
+
+  // Delete lapangan
+  Future<int> deleteLapangan(int id) async {
+    Database db = await instance.database;
+    return await db.delete(
+      'lapangans',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 }

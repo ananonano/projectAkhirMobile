@@ -1,8 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../database/database.dart';
+import '../theme/app_theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -93,6 +95,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // Update di database
       await _updateUserInDatabase(updatedUser);
+      
+      // Simpan foto ke SharedPreferences
+      if (_selectedImagePath != null && _selectedImagePath!.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('profile_image_${widget.user.username}', _selectedImagePath!);
+        print('[EditProfile] Image saved to SharedPreferences: $_selectedImagePath');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -143,13 +152,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         width: 120,
         height: 120,
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          gradient: LinearGradient(
+            colors: [
+              AppColors.primary.withOpacity(0.8),
+              AppColors.primaryLight.withOpacity(0.8),
+            ],
+          ),
           shape: BoxShape.circle,
         ),
-        child: Icon(
+        child: const Icon(
           Icons.person_rounded,
           size: 60,
-          color: Colors.grey[400],
+          color: Colors.white,
         ),
       );
     }
@@ -171,20 +185,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.background,
         elevation: 0,
         title: const Text(
           'Edit Profil',
           style: TextStyle(
-            color: Colors.black,
+            color: AppColors.textPrimary,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.black),
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -205,11 +219,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF64E42),
+                          color: AppColors.primary,
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
+                              color: AppColors.primary.withOpacity(0.3),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -232,7 +246,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: const Text(
                 'Ubah Foto',
                 style: TextStyle(
-                  color: Color(0xFFF64E42),
+                  color: AppColors.primary,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
@@ -272,8 +286,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: ElevatedButton(
                 onPressed: _isLoading ? null : _saveProfile,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF64E42),
-                  disabledBackgroundColor: Colors.grey[300],
+                  backgroundColor: AppColors.primary,
+                  disabledBackgroundColor: AppColors.textSecondary.withOpacity(0.3),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
@@ -320,7 +334,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 14,
-            color: Colors.black87,
+            color: AppColors.textPrimary,
           ),
         ),
         const SizedBox(height: 8),
@@ -329,19 +343,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           keyboardType: keyboardType,
           decoration: InputDecoration(
             hintText: hint,
+            filled: true,
+            fillColor: AppColors.inputFill,
             prefixIcon: Icon(
               prefixIcon,
-              color: const Color(0xFFF64E42),
+              color: AppColors.primary,
               size: 20,
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey[300]!),
+              borderSide: const BorderSide(color: AppColors.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: AppColors.border),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(
-                color: Color(0xFFF64E42),
+                color: AppColors.primary,
                 width: 2,
               ),
             ),

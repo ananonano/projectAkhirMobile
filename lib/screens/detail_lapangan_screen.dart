@@ -638,26 +638,50 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
     );
   }
 
-  Widget _buildFasilitasChip(IconData icon, String label) {
+  Widget _buildFasilitasCard(IconData icon, String label) {
     return Container(
-      margin: const EdgeInsets.only(right: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: ShapeDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1, color: Color(0xFFE5E2DC)),
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
-      child: Row(
+      child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: 7,
         children: [
-          Icon(icon, size: 20, color: const Color(0xFF597D60)),
-          const SizedBox(width: 8),
+          Icon(icon, size: 28, color: const Color(0xFF597D60)),
           Text(
             label,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Color(0xFF1A1C1A),
+              fontSize: 13,
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildFasilitasCards() {
+    return Column(
+      children: [
+        _buildFasilitasCard(Icons.wc_rounded, 'Toilet'),
+        const SizedBox(height: 12),
+        _buildFasilitasCard(Icons.local_parking_rounded, 'Parkir'),
+        const SizedBox(height: 12),
+        _buildFasilitasCard(Icons.wifi_rounded, 'WiFi'),
+        const SizedBox(height: 12),
+        _buildFasilitasCard(Icons.stars_rounded, 'Kualitas'),
+      ],
     );
   }
 
@@ -671,535 +695,786 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
         decimalDigits: 0,
       );
 
-      // PERBAIKAN: Parsing harga ke int untuk mencegah "white screen" karena mismatch tipe data
       int hargaPerJam = int.tryParse(widget.lapangan['harga']?.toString() ?? '0') ?? 0;
       int totalHarga = _selectedTimes.isEmpty
           ? hargaPerJam
           : (hargaPerJam * _selectedTimes.length);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F1EC),
-      extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: CircleAvatar(
-            backgroundColor: Colors.white.withOpacity(0.95),
-            child: IconButton(
-              icon: const Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: const Color(0xFF416448),
-                size: 20,
-              ),
-              onPressed: () => Navigator.pop(context),
-            ),
-          ),
-        ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.only(bottom: 120),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      int bookedCount = _bookedTimes.length;
+      int totalSlots = _availableTimes.length;
+      double filledPercentage = totalSlots > 0 ? bookedCount / totalSlots : 0;
+
+      return Scaffold(
+        backgroundColor: const Color(0xFFFAFAF5),
+        body: Stack(
           children: [
-            Stack(
-              children: [
-                SizedBox(
-                  height: 380,
-                  child: hasImages
-                      ? PageView.builder(
-                          controller: _pageController,
-                          itemCount: _imagePaths.length,
-                          onPageChanged: (index) =>
-                              setState(() => _currentImageIndex = index),
-                          itemBuilder: (context, index) =>
-                              _buildImageProvider(_imagePaths[index]),
-                        )
-                      : _buildPlaceholder(),
-                ),
-                Positioned(
-                  bottom: 0,
-                  left: 0,
-                  right: 0,
-                  child: Container(
-                    height: 80,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        colors: [
-                          Colors.black.withOpacity(0.6),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // Edit Images Button
-                Positioned(
-                  top: 16,
-                  right: 16,
-                  child: GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => EditLapanganImagesScreen(
-                            lapanganId: widget.lapangan['id'] ?? 0,
-                            lapanganName: widget.lapangan['nama_lapangan'] ?? 'Lapangan',
-                          ),
-                        ),
-                      ).then((_) => _loadImagesFromDatabase());
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.6),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.photo_library_rounded,
-                        color: Colors.white,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
-                if (hasImages && _imagePaths.length > 1)
-                  Positioned(
-                    bottom: 20,
-                    left: 0,
-                    right: 0,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(_imagePaths.length, (index) {
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 5),
-                          width: _currentImageIndex == index ? 24 : 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: _currentImageIndex == index
-                                ? const Color(0xFF597D60)
-                                : Colors.white.withOpacity(0.6),
-                            borderRadius: BorderRadius.circular(5),
-                          ),
-                        );
-                      }),
-                    ),
-                  ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(24),
+            // Scrollable content (Image + Main content)
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(top: 80, bottom: 100),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF597D60).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      (widget.lapangan['jenis'] ?? 'LAINNYA')
-                          .toString()
-                          .replaceAll('_', ' '),
-                      style: const TextStyle(
-                        color: Color(0xFF416448),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    widget.lapangan['nama_lapangan'] ?? 'Nama Lapangan',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                      color: Color(0xFF1A1C1A),
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.location_on_rounded,
-                        color: Colors.grey,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          widget.lapangan['address'] ?? 'Alamat tidak tersedia',
-                          style: const TextStyle(
-                            color: Colors.black54,
-                            fontSize: 15,
-                            height: 1.4,
+                  // Image Section
+                  SizedBox(
+                    height: 334,
+                    child: Stack(
+                      children: [
+                        hasImages
+                            ? PageView.builder(
+                                controller: _pageController,
+                                itemCount: _imagePaths.length,
+                                onPageChanged: (index) =>
+                                    setState(() => _currentImageIndex = index),
+                                itemBuilder: (context, index) =>
+                                    _buildImageProvider(_imagePaths[index]),
+                              )
+                            : _buildPlaceholder(),
+                        // Gradient overlay
+                        Positioned(
+                          left: 0,
+                          top: 222,
+                          right: 0,
+                          bottom: 0,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [
+                                  Colors.black.withOpacity(0.4),
+                                  Colors.transparent,
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.schedule_rounded,
-                        color: Color(0xFF597D60),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Jam Operasional: ${widget.lapangan['jam_buka'] ?? '08:00'} - ${widget.lapangan['jam_tutup'] ?? '22:00'}',
-                        style: const TextStyle(
-                          color: Colors.black87,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  const Divider(thickness: 1, color: Color(0xFFEEEEEE)),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Fasilitas Tersedia',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      _buildFasilitasChip(Icons.wc_rounded, 'Toilet Bersih'),
-                      _buildFasilitasChip(
-                        Icons.local_parking_rounded,
-                        'Parkir Luas',
-                      ),
-                      _buildFasilitasChip(Icons.wifi_rounded, 'Free WiFi'),
-                    ],
-                  ),
-                  const SizedBox(height: 30),
-                  const Divider(thickness: 1, color: Color(0xFFE5E2DC)),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Pilih Jadwal Main',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1A1C1A),
-                      letterSpacing: -0.5,
+                        // Indicator dots
+                        if (hasImages && _imagePaths.length > 1)
+                          Positioned(
+                            bottom: 16,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(_imagePaths.length, (index) {
+                                return AnimatedContainer(
+                                  duration: const Duration(milliseconds: 300),
+                                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                                  width: _currentImageIndex == index ? 20 : 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: _currentImageIndex == index
+                                        ? Colors.white
+                                        : Colors.white.withOpacity(0.6),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Tanggal',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: _selectDateFromPicker,
-                        icon: const Icon(
-                          Icons.calendar_today_rounded,
-                          color: Color(0xFF597D60),
-                          size: 22,
-                        ),
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  SizedBox(
-                    height: 80,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: 31,
-                      itemBuilder: (context, index) {
-                        DateTime date = DateTime.now().add(
-                          Duration(days: index),
-                        );
-                        bool isSelected =
-                            _selectedDate.day == date.day &&
-                            _selectedDate.month == date.month;
 
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedDate = date;
-                              _selectedTimes.clear();
-                            });
-                            _fetchBookedTimes();
-                          },
-                          child: Container(
-                            width: 65,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? const Color(0xFF597D60)
-                                  : Colors.white,
-                              border: Border.all(
-                                color: isSelected
-                                    ? const Color(0xFF597D60)
-                                    : Colors.grey.shade300,
-                              ),
-                              borderRadius: BorderRadius.circular(15),
+                  // Main Content
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: 40,
+                      children: [
+                        // Title + Badge + Rating
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 4,
+                          children: [
+                            SizedBox(
+                              width: double.infinity,
+                              child: Text(
+                                widget.lapangan['nama_lapangan'] ?? 'Gelora Futsal',
+                                style: const TextStyle(
+                                  color: Color(0xFF1A1C1A),
+                                  fontSize: 32,
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w600,
+                              height: 1.25,
+                              letterSpacing: -0.32,
                             ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                          ),
+                        ),
+                            Row(
+                              spacing: 8,
                               children: [
-                                Text(
-                                  DateFormat('EEE').format(date),
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.grey,
-                                    fontSize: 12,
+                                // Sport Badge
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: ShapeDecoration(
+                                    color: const Color(0xFF6B8F71).withOpacity(0.1),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(9999),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    spacing: 4,
+                                    children: [
+                                      Icon(
+                                        Icons.sports_soccer_rounded,
+                                        size: 14,
+                                        color: const Color(0xFF6B8F71),
+                                      ),
+                                      Text(
+                                        (widget.lapangan['jenis'] ?? 'Futsal')
+                                            .toString()
+                                            .replaceAll('_', ' ')
+                                            .toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Color(0xFF6B8F71),
+                                          fontSize: 10,
+                                          fontFamily: 'Lexend',
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                // Rating
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  spacing: 2,
+                                  children: [
+                                    Icon(
+                                      Icons.star_rounded,
+                                      size: 14,
+                                      color: const Color(0xFF416448),
+                                    ),
+                                    Text(
+                                      _averageRating.toStringAsFixed(1),
+                                      style: const TextStyle(
+                                        color: Color(0xFF416448),
+                                        fontSize: 12,
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        // Fasilitas Section
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 24,
+                          children: [
+                            Text(
+                              'Fasilitas',
+                              style: const TextStyle(
+                                color: Color(0xFF1A1C1A),
+                                fontSize: 24,
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w400,
+                                height: 1.3,
+                              ),
+                            ),
+                            _buildFasilitasCards(),
+                          ],
+                        ),
+
+                        // Lokasi Section
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 8,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
                                 Text(
-                                  DateFormat('dd').format(date),
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.black,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                  'Lokasi',
+                                  style: const TextStyle(
+                                    color: Color(0xFF1A1C1A),
+                                    fontSize: 24,
+                                    fontFamily: 'Lexend',
+                                    fontWeight: FontWeight.w400,
+                                    height: 1.3,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Maps coming soon'),
+                                      ),
+                                    );
+                                  },
+                                  child: const Text(
+                                    'Lihat Peta',
+                                    style: TextStyle(
+                                      color: Color(0xFF597D60),
+                                      fontSize: 14,
+                                      fontFamily: 'Lexend',
+                                      fontWeight: FontWeight.w600,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
+                            Container(
+                              width: double.infinity,
+                              height: 216,
+                              padding: const EdgeInsets.only(top: 16),
+                              decoration: ShapeDecoration(
+                                shape: RoundedRectangleBorder(
+                                  side: const BorderSide(
+                                    width: 1,
+                                    color: Color(0xFFE5E2DC),
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[100],
+                                  borderRadius: const BorderRadius.only(
+                                    bottomLeft: Radius.circular(11),
+                                    bottomRight: Radius.circular(11),
+                                  ),
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    Icons.map_rounded,
+                                    size: 60,
+                                    color: Colors.grey[400],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Text(
+                              widget.lapangan['address'] ?? 'Jl. Senayan No. 42, Kebayoran Baru, Jakarta Selatan',
+                              style: const TextStyle(
+                                color: Color(0xFF424842),
+                                fontSize: 16,
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w400,
+                                height: 1.5,
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        // Pilih Jadwal Main Section  
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          spacing: 20,
+                          children: [
+                            Text(
+                              'Pilih Jadwal Main',
+                              style: const TextStyle(
+                                color: Color(0xFF1A1C1A),
+                                fontSize: 24,
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            // Date Selector
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              spacing: 10,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Tanggal',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: _selectDateFromPicker,
+                                      icon: const Icon(
+                                        Icons.calendar_today_rounded,
+                                        color: Color(0xFF597D60),
+                                        size: 22,
+                                      ),
+                                      constraints: const BoxConstraints(),
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(
+                                  height: 80,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: 31,
+                                    itemBuilder: (context, index) {
+                                      DateTime date = DateTime.now().add(
+                                        Duration(days: index),
+                                      );
+                                      bool isSelected =
+                                          _selectedDate.day == date.day &&
+                                          _selectedDate.month == date.month;
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _selectedDate = date;
+                                            _selectedTimes.clear();
+                                          });
+                                          _fetchBookedTimes();
+                                        },
+                                        child: Container(
+                                          width: 65,
+                                          margin: const EdgeInsets.only(right: 12),
+                                          decoration: BoxDecoration(
+                                            color: isSelected
+                                                ? const Color(0xFF597D60)
+                                                : Colors.white,
+                                            border: Border.all(
+                                              color: isSelected
+                                                  ? const Color(0xFF597D60)
+                                                  : Colors.grey.shade300,
+                                            ),
+                                            borderRadius: BorderRadius.circular(15),
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.center,
+                                            children: [
+                                              Text(
+                                                DateFormat('EEE').format(date),
+                                                style: TextStyle(
+                                                  color: isSelected
+                                                      ? Colors.white
+                                                      : Colors.grey,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                DateFormat('dd').format(date),
+                                                style: TextStyle(
+                                                  color: isSelected
+                                                      ? Colors.white
+                                                      : Colors.black,
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            // Jam Tersedia
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              spacing: 10,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      'Jam Tersedia',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${_bookedTimes.length} dari ${_availableTimes.length} terisi',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF424842),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                // Occupancy Progress Bar
+                                Container(
+                                  width: double.infinity,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF4F1EC),
+                                    borderRadius: BorderRadius.circular(9999),
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      if (filledPercentage > 0)
+                                        Positioned(
+                                          left: 0,
+                                          top: 0,
+                                          child: Container(
+                                            width: (MediaQuery.of(context).size.width - 48) *
+                                                filledPercentage,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF416448),
+                                              borderRadius: BorderRadius.circular(9999),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                if (_isLoadingJadwal)
+                                  Container(
+                                    width: double.infinity,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Color(0xFF597D60),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Wrap(
+                                    spacing: 10,
+                                    runSpacing: 10,
+                                    children: _availableTimes.map((time) {
+                                      bool isBooked = _bookedTimes.contains(time);
+                                      bool isPassed = _isTimePassed(time);
+                                      bool isSelected = _selectedTimes.contains(time);
+                                      bool isDisabled = isBooked || isPassed;
+
+                                      return GestureDetector(
+                                        onTap: isDisabled
+                                            ? null
+                                            : () {
+                                                setState(() {
+                                                  if (isSelected) {
+                                                    _selectedTimes.remove(time);
+                                                  } else {
+                                                    _selectedTimes.add(time);
+                                                  }
+                                                });
+                                              },
+                                        child: Container(
+                                          width: (MediaQuery.of(context).size.width - 68) / 3,
+                                          padding: const EdgeInsets.symmetric(vertical: 12),
+                                          decoration: BoxDecoration(
+                                            color: isDisabled
+                                                ? Colors.grey[200]
+                                                : (isSelected
+                                                      ? const Color(0xFF597D60)
+                                                      : Colors.white),
+                                            border: Border.all(
+                                              color: isDisabled
+                                                  ? Colors.transparent
+                                                  : (isSelected
+                                                        ? const Color(0xFF597D60)
+                                                        : Colors.grey.shade300),
+                                            ),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Center(
+                                            child: Text(
+                                              time,
+                                              style: TextStyle(
+                                                color: isDisabled
+                                                    ? Colors.grey[400]
+                                                    : (isSelected
+                                                          ? Colors.white
+                                                          : Colors.black87),
+                                                fontWeight: FontWeight.bold,
+                                                decoration: isDisabled
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+
+                        // Rating & Ulasan Section
+                        _buildReviewsSection(),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Fixed Header Bar (Full Top)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                padding: MediaQuery.of(context).padding.copyWith(bottom: 16, left: 0, right: 0),
+                decoration: const ShapeDecoration(
+                  color: Color(0xFFF4F1EC),
+                  shape: RoundedRectangleBorder(
+                    side: BorderSide(
+                      width: 1,
+                      color: Color(0xFFE5E2DC),
+                    ),
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        spacing: 8,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: ShapeDecoration(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9999),
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFF597D60),
+                              size: 20,
+                            ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Jam Tersedia',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  if (_isLoadingJadwal)
-                    Container(
-                      width: double.infinity,
-                      height: 100,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[100],
-                        borderRadius: BorderRadius.circular(10),
+                          Text(
+                            'Jakarta, ID',
+                            style: const TextStyle(
+                              color: Color(0xFF6B8F71),
+                              fontSize: 16,
+                              fontFamily: 'Lexend',
+                              fontWeight: FontWeight.w600,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFF597D60),
+                      Row(
+                        spacing: 8,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: ShapeDecoration(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9999),
+                              ),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.share_rounded,
+                                color: Color(0xFF597D60),
+                                size: 20,
+                              ),
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Share coming soon'),
+                                  ),
+                                );
+                              },
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                          Container(
+                            width: 40,
+                            height: 40,
+                            decoration: ShapeDecoration(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(9999),
+                              ),
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.arrow_back_ios_rounded,
+                                color: Color(0xFF597D60),
+                                size: 20,
+                              ),
+                              onPressed: () => Navigator.pop(context),
+                              constraints: const BoxConstraints(),
+                              padding: EdgeInsets.zero,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                ),
+            ),
+
+            // Bottom Action Bar
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: SafeArea(
+                top: false,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: ShapeDecoration(
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      side: const BorderSide(
+                        width: 1,
+                        color: Color(0xFFE5E2DC),
+                      ),
+                    ),
+                    shadows: [
+                      BoxShadow(
+                        color: const Color(0xFF6B8F71).withOpacity(0.075),
+                        blurRadius: 10,
+                        offset: const Offset(0, -2),
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'MULAI DARI',
+                              style: TextStyle(
+                                color: Color(0xFF424842),
+                                fontSize: 12,
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w500,
+                                height: 1.4,
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.baseline,
+                              textBaseline: TextBaseline.alphabetic,
+                              spacing: 2,
+                              children: [
+                                Text(
+                                  currencyFormat.format(hargaPerJam),
+                                  style: const TextStyle(
+                                    color: Color(0xFF416448),
+                                    fontSize: 24,
+                                    fontFamily: 'Lexend',
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.3,
+                                  ),
+                                ),
+                                const Flexible(
+                                  child: Text(
+                                    '/jam',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Color(0xFF424842),
+                                      fontSize: 12,
+                                      fontFamily: 'Lexend',
+                                      fontWeight: FontWeight.w500,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    )
-                  else
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
-                      children: _availableTimes.map((time) {
-                        bool isBooked = _bookedTimes.contains(time);
-                        bool isPassed = _isTimePassed(time);
-                        bool isSelected = _selectedTimes.contains(time);
-                        bool isDisabled = isBooked || isPassed;
-
-                        return GestureDetector(
-                          onTap: isDisabled
-                              ? null
-                              : () {
-                                  setState(() {
-                                    if (isSelected) {
-                                      _selectedTimes.remove(time);
-                                    } else {
-                                      _selectedTimes.add(time);
-                                    }
-                                  });
-                                },
-                          child: Container(
-                            width: (MediaQuery.of(context).size.width - 68) / 3,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            decoration: BoxDecoration(
-                              color: isDisabled
-                                  ? Colors.grey[200]
-                                  : (isSelected
-                                        ? const Color(0xFF597D60)
-                                        : Colors.white),
-                              border: Border.all(
-                                color: isDisabled
-                                    ? Colors.transparent
-                                    : (isSelected
-                                          ? const Color(0xFF597D60)
-                                          : Colors.grey.shade300),
+                      const SizedBox(width: 16),
+                      Flexible(
+                        flex: 1,
+                        child: GestureDetector(
+                          onTap: () {
+                            if (_selectedTimes.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Pilih jam mainnya dulu bre!'),
+                                  backgroundColor: Colors.orange,
+                                ),
+                              );
+                              return;
+                            }
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => PaymentScreen(
+                                  lapangan: widget.lapangan,
+                                  selectedDate: _selectedDate,
+                                  selectedTimes: _selectedTimes,
+                                ),
                               ),
-                              borderRadius: BorderRadius.circular(10),
+                            );
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
                             ),
-                            child: Center(
+                            decoration: ShapeDecoration(
+                              color: const Color(0xFFF4A261),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              shadows: [
+                                BoxShadow(
+                                  color: const Color(0xFF7E4F58).withOpacity(0.2),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 4),
+                                  spreadRadius: -4,
+                                ),
+                                BoxShadow(
+                                  color: const Color(0xFF7E4F58).withOpacity(0.2),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 10),
+                                  spreadRadius: -3,
+                                ),
+                              ],
+                            ),
+                            child: const Center(
                               child: Text(
-                                time,
+                                'Pilih Jadwal',
+                                textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: isDisabled
-                                      ? Colors.grey[400]
-                                      : (isSelected
-                                            ? Colors.white
-                                            : Colors.black87),
-                                  fontWeight: FontWeight.bold,
-                                  decoration: isDisabled
-                                      ? TextDecoration.lineThrough
-                                      : null,
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontFamily: 'Lexend',
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.3,
                                 ),
                               ),
                             ),
                           ),
-                        );
-                      }).toList(),
-                    ),
-                ],
-              ),
-            ),
-            _buildReviewsSection(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
-          ),
-        ),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _selectedTimes.isEmpty ? 'Harga Mulai' : 'Total Harga',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        currencyFormat.format(totalHarga),
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF597D60),
                         ),
                       ),
-                      if (_selectedTimes.isEmpty)
-                        const Padding(
-                          padding: EdgeInsets.only(bottom: 4.0, left: 2.0),
-                          child: Text(
-                            '/jam',
-                            style: TextStyle(
-                              color: Colors.grey,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
                     ],
                   ),
-                ],
-              ),
-              Flexible(
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (_selectedTimes.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Pilih jam mainnya dulu bre!'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                      return;
-                    }
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PaymentScreen(
-                          lapangan: widget.lapangan,
-                          selectedDate: _selectedDate,
-                          selectedTimes: _selectedTimes,
-                        ),
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF4A261),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 2,
-                  ),
-                child: const Row(
-                  children: [
-                    Text(
-                      'Book Now',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    SizedBox(width: 6),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                  ],
                 ),
               ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-    );
+      );
     } catch (e) {
       print('Error building detail screen: $e');
       return Scaffold(

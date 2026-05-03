@@ -50,41 +50,45 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
 
     if (_vouchers.isEmpty) {
       return SizedBox(
-        height: 120,
+        height: 200,
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.local_offer_rounded, size: 48, color: AppColors.primary.withOpacity(0.3)),
-                const SizedBox(height: 12),
-                const Text(
-                  'Belum ada voucher',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Mainkan Dodge Ball untuk mendapatkan voucher!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                ),
-              ],
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.local_offer_rounded, size: 48, color: AppColors.primary.withOpacity(0.3)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Belum ada voucher',
+                    style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Mainkan Dodge Ball untuk mendapatkan voucher!',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
       );
     }
 
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: _vouchers.length,
-            itemBuilder: (context, index) {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 400),
+      child: ListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _vouchers.length,
+        itemBuilder: (context, index) {
               final voucher = _vouchers[index];
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -191,8 +195,6 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
               );
             },
           ),
-        ],
-      ),
     );
   }
 }

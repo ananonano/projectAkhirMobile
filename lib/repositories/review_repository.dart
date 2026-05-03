@@ -137,4 +137,39 @@ class ReviewRepository {
       return 0;
     }
   }
+
+  // Get all recent reviews across all lapangans (for admin dashboard)
+  Future<List<Map<String, dynamic>>> getAllRecentReviews({int limit = 5}) async {
+    try {
+      Database db = await _dbHelper.database;
+      
+      // First, let's try a simpler query to debug
+      final result = await db.rawQuery('''
+        SELECT 
+          r.id,
+          r.user_id,
+          r.lapangan_id,
+          r.rating,
+          r.comment,
+          r.created_at,
+          COALESCE(u.name, 'Unknown User') as user_name,
+          u.image as user_image,
+          COALESCE(l.nama_lapangan, 'Unknown Lapangan') as lapangan_name
+        FROM reviews r
+        LEFT JOIN users u ON r.user_id = u.id
+        LEFT JOIN lapangans l ON r.lapangan_id = l.id
+        ORDER BY r.created_at DESC
+        LIMIT ?
+      ''', [limit]);
+
+      print('[ReviewRepo] Loaded ${result.length} recent reviews');
+      for (var review in result) {
+        print('[ReviewRepo] - ${review['user_name']} rated ${review['lapangan_name']}: ${review['rating']} stars at ${review['created_at']}');
+      }
+      return result;
+    } catch (e) {
+      print('[ReviewRepo] Error getting all recent reviews: $e');
+      return [];
+    }
+  }
 }

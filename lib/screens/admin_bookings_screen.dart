@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:projectakhir/repositories/booking_repository.dart';
 import 'package:projectakhir/theme/app_theme.dart';
 import '../widgets/admin_drawer.dart';
+import 'receipt_screen.dart';
 
 class AdminBookingsScreen extends StatefulWidget {
   const AdminBookingsScreen({super.key});
@@ -15,11 +16,24 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
   final BookingRepository _bookingRepo = BookingRepository();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late Future<List<Map<String, dynamic>>> _bookingsFuture;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadBookings();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _loadBookings() {
@@ -123,9 +137,9 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
       ),
       body: Stack(
         children: [
-          // Konten utama dengan padding atas untuk header
+          // Konten utama dengan padding atas untuk header + search bar
           Padding(
-            padding: const EdgeInsets.only(top: 80),
+            padding: const EdgeInsets.only(top: 150), // Increased for search bar
             child: RefreshIndicator(
               onRefresh: () async {
                 _loadBookings();
@@ -147,24 +161,61 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                   final bookingsData = snapshot.data ?? [];
 
                   // Create a mutable copy and sort by ID descending (newest first)
-                  final bookings = List<Map<String, dynamic>>.from(bookingsData);
-                  bookings.sort((a, b) {
+                  final allBookings = List<Map<String, dynamic>>.from(bookingsData);
+                  allBookings.sort((a, b) {
                     final idA = a['id'] ?? 0;
                     final idB = b['id'] ?? 0;
                     return idB.compareTo(idA); // Descending order
                   });
+                  
+                  // Filter bookings based on search query
+                  final bookings = allBookings.where((booking) {
+                    if (_searchQuery.isEmpty) return true;
+                    
+                    final namaLapangan = (booking['nama_lapangan'] ?? '').toString().toLowerCase();
+                    final tanggal = (booking['tanggal'] ?? '').toString().toLowerCase();
+                    final jam = (booking['jam'] ?? '').toString().toLowerCase();
+                    final username = (booking['username'] ?? '').toString().toLowerCase();
+                    final totalHarga = (booking['total_harga'] ?? '').toString();
+                    final status = (booking['status'] ?? 'completed').toString().toLowerCase();
+                    final statusDisplay = status == 'cancelled' ? 'cancelled' : 'active';
+                    
+                    // Generate booking code for search
+                    final bookingId = booking['id'] ?? 0;
+                    final bookingCode = 'bkg${bookingId.toString().padLeft(5, '0')}'.toLowerCase();
+                    
+                    return namaLapangan.contains(_searchQuery) ||
+                           tanggal.contains(_searchQuery) ||
+                           jam.contains(_searchQuery) ||
+                           username.contains(_searchQuery) ||
+                           totalHarga.contains(_searchQuery) ||
+                           statusDisplay.contains(_searchQuery) ||
+                           bookingCode.contains(_searchQuery);
+                  }).toList();
 
                   if (bookings.isEmpty) {
                     return Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.event_available_rounded,
-                              size: 60, color: Colors.grey[300]),
+                          Icon(
+                            _searchQuery.isNotEmpty 
+                                ? Icons.search_off_rounded 
+                                : Icons.event_available_rounded,
+                            size: 60, 
+                            color: Colors.grey[300]
+                          ),
                           const SizedBox(height: 16),
                           Text(
-                            'Belum ada booking',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                            _searchQuery.isNotEmpty 
+                                ? 'Tidak ada hasil untuk "$_searchQuery"'
+                                : 'Belum ada booking',
+                            style: TextStyle(
+                              color: Colors.grey[600], 
+                              fontSize: 14,
+                              fontFamily: 'Lexend',
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ],
                       ),
@@ -172,44 +223,97 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(20, 45, 20, 24),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                     itemCount: bookings.length,
                     itemBuilder: (context, index) {
                       final booking = bookings[index];
                       final status = booking['status'] ?? 'completed';
                       final isCancelled = status == 'cancelled';
+                      
+                      // Check if booking is complete (past date/time)
+                      bool isComplete = false;
+                      try {
+                        final bookingDateStr = booking['tanggal'] as String?;
+                        final bookingTimeStr = booking['jam'] as String?;
+                        
+                        if (bookingDateStr != null && bookingTimeStr != null) {
+                          // Parse date (format: "04 May 2026")
+                          final bookingDate = DateFormat('dd MMM yyyy').parse(bookingDateStr);
+                          
+                          // Get last time slot
+                          final times = bookingTimeStr.split(',').map((e) => e.trim()).toList();
+                          if (times.isNotEmpty && times.first != '-') {
+                            // Get the last time slot
+                            final lastTime = times.last;
+                            final hour = int.tryParse(lastTime.split(':')[0]) ?? 0;
+                            
+                            // Create DateTime for the end of booking (last hour + 1)
+                            final bookingEndTime = DateTime(
+                              bookingDate.year,
+                              bookingDate.month,
+                              bookingDate.day,
+                              hour + 1, // End of the last hour slot
+                            );
+                            
+                            // Check if current time is past the booking end time
+                            isComplete = DateTime.now().isAfter(bookingEndTime);
+                          }
+                        }
+                      } catch (e) {
+                        print('[AdminBookings] Error checking complete status: $e');
+                      }
 
                       return Padding(
                         padding: EdgeInsets.only(
                           bottom: index == bookings.length - 1 ? 0 : 24,
                         ),
-                        child: Container(
-                          clipBehavior: Clip.antiAlias,
-                          decoration: ShapeDecoration(
-                            color: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              side: const BorderSide(
-                                  width: 1, color: Color(0xFFC2C8BF)),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            shadows: const [
-                              BoxShadow(
-                                color: Color(0x0C000000),
-                                blurRadius: 2,
-                                offset: Offset(0, 1),
+                        child: GestureDetector(
+                          onTap: () {
+                            // Navigate to receipt screen
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => ReceiptScreen(
+                                  bookingId: booking['id'],
+                                  namaLapangan: booking['nama_lapangan'] ?? 'Unknown',
+                                  tanggal: booking['tanggal'] ?? '-',
+                                  jam: booking['jam'] ?? '-',
+                                  totalDibayar: (int.tryParse(booking['total_harga'].toString()) ?? 0).toDouble(),
+                                  mataUang: 'IDR',
+                                  metodeBayar: 'QRIS',
+                                  isFromHistory: true,
+                                  status: booking['status'] ?? 'completed',
+                                ),
                               ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
+                            );
+                          },
+                          child: Container(
+                            clipBehavior: Clip.antiAlias,
+                            decoration: ShapeDecoration(
+                              color: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                side: const BorderSide(
+                                    width: 1, color: Color(0xFFC2C8BF)),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              shadows: const [
+                                BoxShadow(
+                                  color: Color(0x0C000000),
+                                  blurRadius: 2,
+                                  offset: Offset(0, 1),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
                                     // Header with status badge
                                     Row(
                                       mainAxisAlignment:
@@ -298,7 +402,9 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                           decoration: ShapeDecoration(
                                             color: isCancelled
                                                 ? const Color(0xFFFFDAD6)
-                                                : const Color(0xFFC5ECC9),
+                                                : isComplete
+                                                    ? const Color(0xFFE8F5E9)
+                                                    : const Color(0xFFC5ECC9),
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(9999),
@@ -307,11 +413,15 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                           child: Text(
                                             isCancelled
                                                 ? 'Cancelled'
-                                                : 'Active',
+                                                : isComplete
+                                                    ? 'Complete'
+                                                    : 'Active',
                                             style: TextStyle(
                                               color: isCancelled
                                                   ? const Color(0xFFD84040)
-                                                  : const Color(0xFF416448),
+                                                  : isComplete
+                                                      ? const Color(0xFF2E7D32)
+                                                      : const Color(0xFF416448),
                                               fontSize: 11,
                                               fontFamily: 'Lexend',
                                               fontWeight: FontWeight.w600,
@@ -327,6 +437,35 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                       width: double.infinity,
                                       height: 1,
                                       color: const Color(0xFFE8E8E4),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    // Booking Code
+                                    Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.confirmation_number_rounded,
+                                          size: 14,
+                                          color: Color(0xFF78716C),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        const Text(
+                                          'Kode Booking: ',
+                                          style: TextStyle(
+                                            color: Color(0xFF78716C),
+                                            fontSize: 12,
+                                            fontFamily: 'Lexend',
+                                          ),
+                                        ),
+                                        Text(
+                                          'BKG${booking['id'].toString().padLeft(5, '0')}',
+                                          style: const TextStyle(
+                                            color: Color(0xFF1A1C1A),
+                                            fontSize: 12,
+                                            fontFamily: 'Lexend',
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     const SizedBox(height: 12),
                                     // Price & User Info
@@ -372,7 +511,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                                 CrossAxisAlignment.end,
                                             children: [
                                               const Text(
-                                                'User ID',
+                                                'Username',
                                                 style: TextStyle(
                                                   color: Color(0xFF78716C),
                                                   fontSize: 12,
@@ -381,7 +520,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
-                                                '#${booking['user_id'] ?? '-'}',
+                                                booking['username'] ?? 'Unknown',
                                                 style: const TextStyle(
                                                   color: Color(0xFF1A1C1A),
                                                   fontSize: 14,
@@ -396,11 +535,11 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                         ),
                                       ],
                                     ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              // Action button
-                              if (!isCancelled)
+                                // Action button
+                              if (!isCancelled && !isComplete)
                                 Padding(
                                   padding: const EdgeInsets.only(
                                       left: 24, right: 24, bottom: 24),
@@ -437,7 +576,8 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                     ),
                                   ),
                                 ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       );
@@ -456,6 +596,72 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
             child: AdminHeaderBar(
               title: 'Manajemen Booking',
               scaffoldKey: _scaffoldKey,
+            ),
+          ),
+          
+          // Search Bar
+          Positioned(
+            top: 80,
+            left: 0,
+            right: 0,
+            child: Container(
+              color: const Color(0xFFFAFAF5),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFE8E8E4),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x0C000000),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cari kode booking, lapangan, tanggal, username...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                      fontFamily: 'Lexend',
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey[400],
+                      size: 20,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.clear_rounded,
+                              color: Colors.grey[400],
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontFamily: 'Lexend',
+                  ),
+                ),
+              ),
             ),
           ),
         ],

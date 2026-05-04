@@ -184,10 +184,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: SingleChildScrollView(
-          child: Center(
+        child: Center(
+          child: SingleChildScrollView(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
               child: Container(
@@ -217,44 +218,23 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // --- LOGO ---
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryDark,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primaryDark.withOpacity(0.2),
-                            blurRadius: 6,
-                            offset: const Offset(0, 4),
-                            spreadRadius: -4,
+                    // --- LOGO IMAGE ---
+                    Image.asset(
+                      'lapang-in.png',
+                      height: 60,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        // Fallback to text if image not found
+                        return const Text(
+                          'LAPANG.IN',
+                          style: TextStyle(
+                            color: AppColors.primaryDark,
+                            fontSize: 48,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -1.2,
                           ),
-                          BoxShadow(
-                            color: AppColors.primaryDark.withOpacity(0.15),
-                            blurRadius: 15,
-                            offset: const Offset(0, 10),
-                            spreadRadius: -3,
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.sports_soccer_rounded,
-                        color: Colors.white,
-                        size: 36,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // --- TITLE & SUBTITLE ---
-                    const Text(
-                      'LAPANG.IN',
-                      style: TextStyle(
-                        color: AppColors.primaryDark,
-                        fontSize: 48,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -1.2,
-                      ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 12),
                     const Text(

@@ -10,13 +10,19 @@ import '../repositories/lapangan_image_repository.dart';
 import '../models/review_model.dart';
 import '../database/database.dart';
 import 'payment_screen.dart';
-import 'edit_lapangan_images_screen.dart';
 import 'root.dart';
 
 class DetailLapanganScreen extends StatefulWidget {
   final Map<String, dynamic> lapangan;
+  final bool openReviewOnLoad;
+  final Review? existingReview;
 
-  const DetailLapanganScreen({super.key, required this.lapangan});
+  const DetailLapanganScreen({
+    super.key,
+    required this.lapangan,
+    this.openReviewOnLoad = false,
+    this.existingReview,
+  });
 
   @override
   State<DetailLapanganScreen> createState() => _DetailLapanganScreenState();
@@ -45,6 +51,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
   int _reviewCount = 0;
   bool _isLoadingReviews = false;
   Review? _userReview;
+  int? _currentUserId; // Store current user ID for checking ownership
 
   @override
   void initState() {
@@ -56,6 +63,13 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
     _loadBookedTimes();
     // Load reviews and ratings
     _loadReviews();
+    
+    // Auto-open review dialog if requested
+    if (widget.openReviewOnLoad) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _openReviewDialog();
+      });
+    }
   }
 
   void _generateAvailableTimesFromLapangan() {
@@ -212,7 +226,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
       
       if (mounted) {
         setState(() {
-          _bookedTimes = booked ?? [];
+          _bookedTimes = booked;
           _isLoadingJadwal = false;
           _selectedTimes.clear();
         });
@@ -241,20 +255,40 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
         return;
       }
 
+      // Get current user ID
+      final prefs = await SharedPreferences.getInstance();
+      final username = prefs.getString('username');
+      int? currentUserId;
+      
+      if (username != null) {
+        final userData = await DatabaseHelper.instance.getUserByUsername(username);
+        if (userData != null) {
+          currentUserId = userData['id'] as int;
+        }
+      }
+
       final reviews = await _reviewRepository.getReviewsByLapangan(lapanganId);
       final avgRating = await _reviewRepository.getAverageRating(lapanganId);
       final reviewCount = await _reviewRepository.getReviewCount(lapanganId);
+      
+      // Check if current user has already reviewed
+      Review? userReview;
+      if (currentUserId != null) {
+        userReview = await _reviewRepository.getUserReview(currentUserId, lapanganId);
+      }
       
       if (mounted) {
         setState(() {
           _reviews = reviews;
           _averageRating = avgRating;
           _reviewCount = reviewCount;
+          _userReview = userReview;
+          _currentUserId = currentUserId; // Store for checking ownership in UI
           _isLoadingReviews = false;
         });
       }
       
-      print('[ReviewScreen] Loaded ${reviews.length} reviews, avg rating: $avgRating');
+      print('[ReviewScreen] Loaded ${reviews.length} reviews, avg rating: $avgRating, user has reviewed: ${userReview != null}');
     } catch (e) {
       print('[ReviewScreen] Error loading reviews: $e');
       if (mounted) {
@@ -269,12 +303,13 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
       text: _userReview?.comment ?? '',
     );
     selectedRating = _userReview?.rating ?? 5;
+    final bool isEditing = _userReview != null;
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          title: const Text('Beri Rating & Ulasan'),
+          title: Text(isEditing ? 'Edit Rating & Ulasan' : 'Beri Rating & Ulasan'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -334,20 +369,42 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
               onPressed: () => Navigator.pop(context),
               child: const Text('Batal'),
             ),
+            if (isEditing)
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  await _deleteReview();
+                },
+                child: const Text(
+                  'Hapus',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
             TextButton(
               onPressed: () async {
                 Navigator.pop(context);
                 await _submitReview(selectedRating, commentController.text);
               },
-              child: const Text(
-                'Kirim',
-                style: TextStyle(color: Color(0xFF597D60)),
+              child: Text(
+                isEditing ? 'Update' : 'Kirim',
+                style: const TextStyle(color: Color(0xFF597D60)),
               ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  void _openReviewDialog() {
+    // Set existing review if provided from booking history
+    if (widget.existingReview != null) {
+      setState(() {
+        _userReview = widget.existingReview;
+      });
+    }
+    // Open the rating dialog
+    _showRatingDialog();
   }
 
   Future<void> _submitReview(int rating, String comment) async {
@@ -419,6 +476,54 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
     }
   }
 
+  Future<void> _deleteReview() async {
+    if (_userReview == null || _userReview!.id == null) return;
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Ulasan'),
+        content: const Text('Apakah Anda yakin ingin menghapus ulasan ini?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              'Hapus',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      await _reviewRepository.deleteReview(_userReview!.id!);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Ulasan berhasil dihapus!')),
+      );
+
+      // Reload reviews
+      await _loadReviews();
+      
+      // Trigger home screen refresh
+      homeScreenRefreshNotifier.value++;
+      print('[DetailScreen] Triggered home screen refresh after review deletion');
+    } catch (e) {
+      print('[ReviewScreen] Error deleting review: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
+  }
+
   IconData _getSportIcon(String sportKey) {
     switch (sportKey.toUpperCase()) {
       case 'FUTSAL':
@@ -453,6 +558,9 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
   }
 
   Widget _buildReviewItem(Review review) {
+    // Check if this is user's own review
+    final isOwnReview = _currentUserId != null && review.userId == _currentUserId;
+    
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(14),
@@ -489,12 +597,56 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      review.userName ?? 'User',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            review.userName ?? 'User',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        if (isOwnReview)
+                          PopupMenuButton<String>(
+                            icon: const Icon(
+                              Icons.more_vert_rounded,
+                              size: 20,
+                              color: Colors.grey,
+                            ),
+                            onSelected: (value) {
+                              if (value == 'edit') {
+                                _showRatingDialog();
+                              } else if (value == 'delete') {
+                                _deleteReview();
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_rounded, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Edit'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_rounded, size: 18, color: Colors.red),
+                                    SizedBox(width: 8),
+                                    Text('Hapus', style: TextStyle(color: Colors.red)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     _buildStarRating(review.rating.toDouble()),
@@ -584,17 +736,17 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                     color: const Color(0xFF597D60).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
                       Icon(
-                        Icons.add_rounded,
-                        color: Color(0xFF597D60),
+                        _userReview == null ? Icons.add_rounded : Icons.edit_rounded,
+                        color: const Color(0xFF597D60),
                         size: 18,
                       ),
-                      SizedBox(width: 4),
+                      const SizedBox(width: 4),
                       Text(
-                        'Rating',
-                        style: TextStyle(
+                        _userReview == null ? 'Rating' : 'Edit',
+                        style: const TextStyle(
                           color: Color(0xFF597D60),
                           fontWeight: FontWeight.bold,
                           fontSize: 12,
@@ -844,9 +996,6 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
       );
 
       int hargaPerJam = int.tryParse(widget.lapangan['harga']?.toString() ?? '0') ?? 0;
-      int totalHarga = _selectedTimes.isEmpty
-          ? hargaPerJam
-          : (hargaPerJam * _selectedTimes.length);
 
       int bookedCount = _bookedTimes.length;
       int totalSlots = _availableTimes.length;
@@ -1352,85 +1501,27 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    mainAxisAlignment: MainAxisAlignment.start,
                     children: [
-                      Row(
-                        spacing: 8,
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: ShapeDecoration(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9999),
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.location_on_rounded,
-                              color: Color(0xFF597D60),
-                              size: 20,
-                            ),
+                      // Back button only
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: ShapeDecoration(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(9999),
                           ),
-                          Text(
-                            'Jakarta, ID',
-                            style: const TextStyle(
-                              color: Color(0xFF6B8F71),
-                              fontSize: 16,
-                              fontFamily: 'Lexend',
-                              fontWeight: FontWeight.w600,
-                              height: 1.5,
-                            ),
+                        ),
+                        child: IconButton(
+                          icon: const Icon(
+                            Icons.arrow_back_ios_rounded,
+                            color: Color(0xFF597D60),
+                            size: 20,
                           ),
-                        ],
-                      ),
-                      Row(
-                        spacing: 8,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: ShapeDecoration(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9999),
-                              ),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.share_rounded,
-                                color: Color(0xFF597D60),
-                                size: 20,
-                              ),
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Share coming soon'),
-                                  ),
-                                );
-                              },
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ),
-                          Container(
-                            width: 40,
-                            height: 40,
-                            decoration: ShapeDecoration(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(9999),
-                              ),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.arrow_back_ios_rounded,
-                                color: Color(0xFF597D60),
-                                size: 20,
-                              ),
-                              onPressed: () => Navigator.pop(context),
-                              constraints: const BoxConstraints(),
-                              padding: EdgeInsets.zero,
-                            ),
-                          ),
-                        ],
+                          onPressed: () => Navigator.pop(context),
+                          constraints: const BoxConstraints(),
+                          padding: EdgeInsets.zero,
+                        ),
                       ),
                     ],
                   ),

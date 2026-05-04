@@ -175,11 +175,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       print('[EditProfile] Profile image notifier triggered');
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil berhasil diperbarui!')),
-        );
-
-        // Return updated user
+        // Return updated user (notification will be shown in profile_screen)
         Navigator.pop(context, updatedUser);
       }
     } catch (e) {
@@ -257,6 +253,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,

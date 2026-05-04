@@ -22,11 +22,11 @@ class BookingRepository {
   }
 
   /// Get all bookings for revenue calculations (Phase 3)
-  /// Joins with lapangans to include gambar field
+  /// Joins with lapangans to include gambar field and users to include username
   Future<List<Map<String, dynamic>>> getAllBookings() async {
     try {
       final db = await _db.database;
-      // Join bookings with lapangans to get gambar
+      // Join bookings with lapangans and users to get gambar and username
       final bookings = await db.rawQuery('''
         SELECT 
           b.id, 
@@ -38,9 +38,11 @@ class BookingRepository {
           b.total_harga, 
           b.status, 
           b.created_at,
-          l.image as gambar
+          l.image as gambar,
+          u.username as username
         FROM bookings b
         LEFT JOIN lapangans l ON b.lapangan_id = l.id
+        LEFT JOIN users u ON b.user_id = u.id
       ''');
       print('[BookingRepo] Loaded ${bookings.length} bookings');
       return bookings;

@@ -2,14 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/lapangan_controller.dart';
 import '../models/lapangan_model.dart';
 import '../theme/app_theme.dart';
 import '../repositories/booking_repository.dart';
 import '../repositories/review_repository.dart';
 import 'admin_bookings_screen.dart';
-import 'login_screen.dart';
+import 'admin_reviews_screen.dart';
 import '../widgets/admin_drawer.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -140,17 +139,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  void _logout() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -180,7 +168,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           children: [
                             // Revenue Today - Full Width Compact
                             _StatCard(
-                              title: 'REVENUE\nTODAY',
+                              title: 'REVENUE / TODAY',
                               value: 'Rp ${NumberFormat('#,###').format(_revenueToday.toInt())}',
                               icon: Icons.trending_up_rounded,
                             ),
@@ -192,7 +180,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 children: [
                                   Expanded(
                                     child: _StatCard(
-                                      title: 'BOOKINGS\nTODAY',
+                                      title: 'BOOKINGS\n/ TODAY',
                                       value: _bookingsToday.toString(),
                                       icon: Icons.event_available_rounded,
                                     ),
@@ -288,14 +276,40 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text(
-                              'Recent Reviews',
-                              style: TextStyle(
-                                color: Color(0xFF1A1C1A),
-                                fontSize: 18,
-                                fontFamily: 'Lexend',
-                                fontWeight: FontWeight.w700,
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  'Recent Reviews',
+                                  style: TextStyle(
+                                    color: Color(0xFF1A1C1A),
+                                    fontSize: 18,
+                                    fontFamily: 'Lexend',
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                GestureDetector(
+                                  onTap: () async {
+                                    await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => const AdminReviewsScreen(),
+                                      ),
+                                    );
+                                    // Refresh dashboard data when returning
+                                    _loadDashboardData();
+                                  },
+                                  child: const Text(
+                                    'View Reviews',
+                                    style: TextStyle(
+                                      color: Color(0xFF6B8F71),
+                                      fontSize: 14,
+                                      fontFamily: 'Lexend',
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 16),
                             if (_recentReviews.isEmpty)
@@ -379,7 +393,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   const Text(
-                                    'Venue Dashboard',
+                                    'Dashboard',
                                     style: TextStyle(
                                       color: Color(0xFF6B8F71),
                                       fontSize: 16,
@@ -399,24 +413,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                                     ),
                                   ),
                                 ],
-                              ),
-                            ),
-                          ),
-                          // Profile Button
-                          InkWell(
-                            onTap: _logout,
-                            borderRadius: BorderRadius.circular(20),
-                            child: Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF6B8F71),
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                              child: const Icon(
-                                Icons.logout_rounded,
-                                color: Colors.white,
-                                size: 18,
                               ),
                             ),
                           ),
@@ -517,18 +513,19 @@ class _StatCardGreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF6B8F71),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E2DC)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: const Color(0xFF6B8F71).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(Icons.domain, color: Colors.white, size: 24),
+            child: const Icon(Icons.domain, color: Color(0xFF6B8F71), size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -539,20 +536,20 @@ class _StatCardGreen extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF78716C),
                     fontSize: 11,
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w400,
                     height: 1.30,
                   ),
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   value,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF1A1C1A),
                     fontSize: 24,
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w700,
@@ -565,7 +562,7 @@ class _StatCardGreen extends StatelessWidget {
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF78716C),
                     fontSize: 9,
                     fontFamily: 'Lexend',
                     fontWeight: FontWeight.w400,
@@ -608,7 +605,7 @@ class _BookingCard extends StatelessWidget {
     final lapanganName = booking['nama_lapangan'] ?? 'Field ${booking['lapangan_id']}';
     final timeSlot = booking['jam'] ?? 'N/A';
     final bookingDate = booking['tanggal'] ?? 'N/A';
-    final bookedBy = booking['user_id']?.toString() ?? booking['nama_pemesan'] ?? 'Unknown';
+    final bookedBy = booking['username'] ?? 'Unknown';
     final status = booking['status'] ?? 'pending';
     final statusColor = _getStatusColor(status);
     final gambar = booking['gambar'] as String?;

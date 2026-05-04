@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/gemini_service.dart';
 import '../theme/app_theme.dart';
 import '../repositories/chat_repository.dart';
@@ -17,24 +18,45 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> _messages = [];
   final ChatRepository _chatRepository = ChatRepository();
   bool _isLoading = false;
+  int _userId = 0; // Store current user ID
 
   @override
   void initState() {
     super.initState();
-    _loadChatHistory();
+    _loadUserIdAndChat();
   }
 
-  /// Load chat history dari database
-  Future<void> _loadChatHistory() async {
+  /// Load user ID from SharedPreferences and then load chat history
+  Future<void> _loadUserIdAndChat() async {
     try {
-      final messages = await _chatRepository.getAllMessages();
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id') ?? 0;
+      setState(() {
+        _userId = userId;
+      });
+      print('[ChatScreen] Loaded user_id: $_userId');
+      await _loadChatHistory();
+    } catch (e) {
+      print('[ERROR] Error loading user ID: $e');
+    }
+  }
+
+  /// Load chat history dari database untuk user ini
+  Future<void> _loadChatHistory() async {
+    if (_userId == 0) {
+      print('[ChatScreen] User ID is 0, skipping chat history load');
+      return;
+    }
+    
+    try {
+      final messages = await _chatRepository.getAllMessages(_userId);
       setState(() {
         _messages.clear();
         for (var msg in messages) {
           _messages.add(msg.toUIMap());
         }
       });
-      print('[DEBUG] Loaded ${_messages.length} messages from database');
+      print('[DEBUG] Loaded ${_messages.length} messages for user $_userId from database');
       _scrollToBottom();
     } catch (e) {
       print('[ERROR] Error loading chat history: $e');
@@ -50,7 +72,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _sendMessage() async {
     final text = _chatController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _userId == 0) return;
     
     // Add user message to UI
     setState(() {
@@ -59,7 +81,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     
     // Save user message to database
-    await _chatRepository.addMessage(ChatMessage(role: 'user', text: text));
+    await _chatRepository.addMessage(ChatMessage(
+      userId: _userId,
+      role: 'user',
+      text: text,
+    ));
     
     _chatController.clear();
     _scrollToBottom();
@@ -74,7 +100,11 @@ class _ChatScreenState extends State<ChatScreen> {
     });
     
     // Save AI message to database
-    await _chatRepository.addMessage(ChatMessage(role: 'ai', text: response));
+    await _chatRepository.addMessage(ChatMessage(
+      userId: _userId,
+      role: 'ai',
+      text: response,
+    ));
     
     _scrollToBottom();
   }
@@ -91,7 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
     });
   }
 
-  /// Clear all chat history from database and UI
+  /// Clear all chat history from database and UI for current user
   void _clearHistory() {
     showDialog(
       context: context,
@@ -106,17 +136,19 @@ class _ChatScreenState extends State<ChatScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              await _chatRepository.clearAllMessages();
+              await _chatRepository.clearAllMessages(_userId);
               setState(() {
                 _messages.clear();
               });
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Chat history cleared'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-              print('[DEBUG] Chat history cleared');
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Chat history cleared'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+              print('[DEBUG] Chat history cleared for user $_userId');
             },
             child: const Text('Clear', style: TextStyle(color: Colors.red)),
           ),
@@ -128,6 +160,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Row(
@@ -139,7 +172,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.smart_toy_rounded, color: AppColors.primary, size: 20),
+              child: const Icon(Icons.support_agent_rounded, color: AppColors.primary, size: 20),
             ),
             const SizedBox(width: 10),
             const Column(
@@ -174,7 +207,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             color: AppColors.primary.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Icon(Icons.smart_toy_rounded, size: 36, color: AppColors.primary),
+                          child: const Icon(Icons.support_agent_rounded, size: 36, color: AppColors.primary),
                         ),
                         const SizedBox(height: 16),
                         const Text('Halo! Ada yang bisa dibantu?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
@@ -217,7 +250,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       color: AppColors.primary.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.smart_toy_rounded, size: 16, color: AppColors.primary),
+                    child: const Icon(Icons.support_agent_rounded, size: 16, color: AppColors.primary),
                   ),
                   const SizedBox(width: 10),
                   Container(
@@ -306,7 +339,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 color: AppColors.primary.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(9),
               ),
-              child: const Icon(Icons.smart_toy_rounded, size: 16, color: AppColors.primary),
+              child: const Icon(Icons.support_agent_rounded, size: 16, color: AppColors.primary),
             ),
             const SizedBox(width: 8),
           ],

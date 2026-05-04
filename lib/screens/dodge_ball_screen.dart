@@ -26,13 +26,8 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
   List<Map<String, double>> _enemies = [];
   Timer? _gameTimer;
 
-  // SENSOR 1: Akselerometer
+  // SENSOR: Akselerometer
   StreamSubscription<AccelerometerEvent>? _accelSubscription;
-
-  // SENSOR 2: Giroskop
-  StreamSubscription<GyroscopeEvent>? _gyroSubscription;
-  double _gyroZ = 0.0;
-  bool _isTurboMode = false;
 
   final Random _random = Random();
 
@@ -42,6 +37,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
   bool _isPlaying = false;
   bool _isGameOver = false;
   bool _isNewBest = false;
+  bool _isLoadingHighScore = true;
 
   // --- VOUCHER SYSTEM ---
   final VoucherController _voucherController = VoucherController();
@@ -62,14 +58,12 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     super.initState();
     _loadHighScore();
     _setupAccelerometer();
-    _setupGyroscope();
   }
 
   @override
   void dispose() {
     _gameTimer?.cancel();
     _accelSubscription?.cancel();
-    _gyroSubscription?.cancel();
     super.dispose();
   }
 
@@ -77,9 +71,16 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
   Future<void> _loadHighScore() async {
     final prefs = await SharedPreferences.getInstance();
     final username = prefs.getString('username') ?? 'guest';
-    setState(() {
-      _highScore = prefs.getInt('dodgeball_highscore_$username') ?? 0;
-    });
+    final loadedHighScore = prefs.getInt('dodgeball_highscore_$username') ?? 0;
+    
+    print('[DodgeBall] Loading highscore for $username: $loadedHighScore');
+    
+    if (mounted) {
+      setState(() {
+        _highScore = loadedHighScore;
+        _isLoadingHighScore = false;
+      });
+    }
   }
 
   Future<void> _saveHighScore(int score) async {
@@ -87,12 +88,14 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     final username = prefs.getString('username') ?? 'guest';
     await prefs.setInt('dodgeball_highscore_$username', score);
     
+    print('[DodgeBall] Saved new highscore for $username: $score');
+    
     // Trigger profile stats refresh after saving new highscore
     profileStatsRefreshNotifier.value++;
     print('[DodgeBall] Triggered profile stats refresh after new highscore: $score');
   }
 
-  // --- SENSOR 1: AKSELEROMETER ---
+  // --- SENSOR: AKSELEROMETER ---
   void _setupAccelerometer() {
     _accelSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
       if (_isPlaying && !_isGameOver) {
@@ -100,18 +103,6 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
           _playerX -= event.x * 2.5;
           if (_playerX < 0) _playerX = 0;
           if (_playerX > _screenWidth - _ballSize) _playerX = _screenWidth - _ballSize;
-        });
-      }
-    });
-  }
-
-  // --- SENSOR 2: GIROSKOP ---
-  void _setupGyroscope() {
-    _gyroSubscription = gyroscopeEventStream().listen((GyroscopeEvent event) {
-      if (_isPlaying && !_isGameOver) {
-        setState(() {
-          _gyroZ = event.z;
-          _isTurboMode = _gyroZ.abs() > 2.0;
         });
       }
     });
@@ -152,7 +143,8 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
         enemy['y'] = enemy['y']! + _enemySpeed;
       }
 
-      int scorePerBall = _isTurboMode ? 20 : 10;
+      // Fixed score per ball (no turbo mode)
+      int scorePerBall = 10;
       _enemies.removeWhere((enemy) {
         if (enemy['y']! > _screenHeight) {
           _score += scorePerBall;
@@ -162,8 +154,8 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
         return false;
       });
 
-      double baseSpawnRate = 0.03 + (_score * 0.0001);
-      double spawnRate = _isTurboMode ? baseSpawnRate * 2.0 : baseSpawnRate;
+      // Fixed spawn rate (no turbo mode)
+      double spawnRate = 0.03 + (_score * 0.0001);
       if (_random.nextDouble() < spawnRate) {
         _enemies.add({
           'x': _random.nextDouble() * (_screenWidth - _ballSize),
@@ -186,15 +178,26 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
 
   void _gameOver() async {
     _gameTimer?.cancel();
+    
+    // Check if current score beats highscore
+    bool isNewBest = _score > _highScore;
+    
     setState(() {
       _isPlaying = false;
       _isGameOver = true;
-      if (_score > _highScore) {
-        _highScore = _score;
-        _isNewBest = true;
-        _saveHighScore(_highScore);
-      }
+      _isNewBest = isNewBest;
     });
+    
+    // Save highscore if it's a new best
+    if (isNewBest) {
+      setState(() {
+        _highScore = _score;
+      });
+      await _saveHighScore(_score);
+      print('[DodgeBall] New highscore achieved: $_score (previous: ${_highScore})');
+    } else {
+      print('[DodgeBall] Game over. Score: $_score, Highscore: $_highScore');
+    }
 
     // Award voucher if score is high enough
     try {
@@ -260,11 +263,11 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
         color: color,
         shape: BoxShape.circle,
         boxShadow: [
-          BoxShadow(color: color.withOpacity(0.6), blurRadius: 15, spreadRadius: 2),
+          BoxShadow(color: color.withValues(alpha: 0.6), blurRadius: 15, spreadRadius: 2),
         ],
       ),
       child: Center(
-        child: Icon(iconData, color: Colors.white.withOpacity(0.8), size: _ballSize * 0.7),
+        child: Icon(iconData, color: Colors.white.withValues(alpha: 0.8), size: _ballSize * 0.7),
       ),
     );
   }
@@ -318,24 +321,6 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
                           shadows: [Shadow(color: Colors.blueAccent, blurRadius: 20)],
                         ),
                       ),
-                      if (_isTurboMode)
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.redAccent,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [BoxShadow(color: Colors.redAccent.withOpacity(0.6), blurRadius: 10)],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.rotate_right, color: Colors.white, size: 14),
-                              SizedBox(width: 4),
-                              Text('⚡ TURBO MODE — 2x SCORE!',
-                                  style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                        ),
                     ],
                   ),
                 ),
@@ -344,7 +329,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
             // Start menu & game over overlay
             if (!_isPlaying)
               Container(
-                color: Colors.black.withOpacity(0.7),
+                color: Colors.black.withValues(alpha: 0.7),
                 width: double.infinity,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -365,7 +350,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.2),
+                            color: Colors.green.withValues(alpha: 0.2),
                             border: Border.all(color: Colors.green, width: 2),
                             borderRadius: BorderRadius.circular(10),
                           ),
@@ -404,28 +389,43 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
                         ],
                       ),
                     ] else ...[
+                      // Show highscore on start screen
+                      if (!_isLoadingHighScore && _highScore > 0) ...[
+                        Text(
+                          "Your Best: $_highScore",
+                          style: const TextStyle(
+                            color: Colors.orangeAccent,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
                       const Text(
-                        "Miringin HP → gerak kiri/kanan\nPutar HP → TURBO MODE (2x score!)\natau Swipe Layar buat gerak!",
+                        "Miringin HP → gerak kiri/kanan\natau Swipe Layar buat gerak!",
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.white70, fontSize: 16, height: 1.5),
                       ),
                     ],
                     const SizedBox(height: 40),
-                    ElevatedButton(
-                      onPressed: _startGame,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        elevation: 10,
-                        shadowColor: Colors.blueAccent.withOpacity(0.5),
+                    if (_isLoadingHighScore)
+                      const CircularProgressIndicator(color: Colors.blueAccent)
+                    else
+                      ElevatedButton(
+                        onPressed: _startGame,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                          elevation: 10,
+                          shadowColor: Colors.blueAccent.withValues(alpha: 0.5),
+                        ),
+                        child: Text(
+                          _isGameOver ? "PLAY AGAIN" : "START GAME",
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      child: Text(
-                        _isGameOver ? "PLAY AGAIN" : "START GAME",
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                    ),
                     const SizedBox(height: 20),
                     TextButton(
                       onPressed: () => Navigator.pop(context),
@@ -447,7 +447,7 @@ class GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.05)
+      ..color = Colors.white.withValues(alpha: 0.05)
       ..strokeWidth = 1.0;
 
     for (double i = 0; i < size.width; i += 40) {

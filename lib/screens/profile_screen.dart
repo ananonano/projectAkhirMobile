@@ -12,7 +12,6 @@ import '../widgets/user_vouchers_widget.dart';
 import 'login_screen.dart';
 import 'dodge_ball_screen.dart';
 import 'edit_profile_screen.dart';
-import 'time_converter_screen.dart';
 import 'root.dart'; // Import untuk profileStatsRefreshNotifier
 
 class ProfileScreen extends StatefulWidget {
@@ -87,8 +86,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final TimeController _timeController = TimeController();
   final LocalAuthentication auth = LocalAuthentication();
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  late Timer _timer;
-  DateTime _currentTime = DateTime.now();
   String _selectedTimeZone = 'WIB';
 
   final Map<String, int> _timeZoneOffsets = TimeController.profileTimeZones;
@@ -99,10 +96,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadUserData();
     _checkBiometricStatus();
     _loadUserStats(); // Load dynamic stats
-
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (mounted) setState(() => _currentTime = DateTime.now());
-    });
     
     // Listen to profile stats refresh notifier
     profileStatsRefreshNotifier.addListener(_onStatsRefreshTriggered);
@@ -126,7 +119,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    _timer.cancel();
     profileStatsRefreshNotifier.removeListener(_onStatsRefreshTriggered);
     super.dispose();
   }
@@ -225,6 +217,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       // 3. Ambil highscore tertinggi dari game dodge ball (dari SharedPreferences)
       final highScore = prefs.getInt('dodgeball_highscore_$username') ?? 0;
       print('[ProfileScreen] Highscore for $username: $highScore');
+      print('[ProfileScreen] Highscore key: dodgeball_highscore_$username');
 
       // Update state
       if (mounted) {
@@ -240,6 +233,162 @@ class _ProfileScreenState extends State<ProfileScreen> {
       print('[ProfileScreen] Error loading user stats: $e');
       print('[ProfileScreen] Stack trace: ${StackTrace.current}');
     }
+  }
+
+  // Helper method untuk set highscore manual (untuk restore atau testing)
+  Future<void> _setHighscoreManual(int score) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final username = prefs.getString('username') ?? 'guest';
+      
+      await prefs.setInt('dodgeball_highscore_$username', score);
+      print('[ProfileScreen] ✅ Highscore set manually for $username: $score');
+      
+      // Reload stats
+      await _loadUserStats();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Highscore berhasil di-set ke $score!'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      print('[ProfileScreen] ❌ Error setting highscore: $e');
+    }
+  }
+
+  // Dialog untuk restore highscore (long press pada stats card Poin)
+  void _showRestoreHighscoreDialog() {
+    final TextEditingController scoreController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.restore_rounded, color: AppColors.primary, size: 28),
+            SizedBox(width: 12),
+            Text(
+              'Restore Highscore',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Masukkan highscore yang ingin di-restore:',
+              style: TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: scoreController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: 'Highscore',
+                hintText: 'Contoh: 1000',
+                prefixIcon: const Icon(Icons.emoji_events_rounded),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                filled: true,
+                fillColor: AppColors.inputFill,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: Colors.orange),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Highscore saat ini: $_highScore',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Batal',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final score = int.tryParse(scoreController.text);
+              if (score != null && score >= 0) {
+                Navigator.pop(context);
+                _setHighscoreManual(score);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Masukkan angka yang valid!'),
+                    backgroundColor: Colors.red,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    margin: const EdgeInsets.all(16),
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24,
+                vertical: 12,
+              ),
+            ),
+            child: const Text(
+              'Restore',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showVouchersDialog() {
@@ -384,23 +533,387 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Reset biometrik dari akun ini
   Future<void> _resetBiometric() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('biometric_enabled');
-    await prefs.remove('biometric_username');
-    await prefs.remove('biometric_role');
-    // Refresh status biometrik setelah reset
-    await _checkBiometricStatus();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Login biometrik berhasil dinonaktifkan.'),
-          backgroundColor: Colors.orange,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Nonaktifkan Login Biometrik?',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
+          ),
         ),
-      );
+        content: const Text(
+          'Anda akan perlu memasukkan username dan password untuk login setelah menonaktifkan fitur ini.',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            color: Color(0xFF78716C),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Batal',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                color: Color(0xFF78716C),
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Nonaktifkan',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    // If user confirmed, proceed with reset
+    if (confirmed == true) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('biometric_enabled');
+      await prefs.remove('biometric_username');
+      await prefs.remove('biometric_role');
+      // Refresh status biometrik setelah reset
+      await _checkBiometricStatus();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Login biometrik berhasil dinonaktifkan.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
     }
+  }
+
+  // Show change password dialog
+  Future<void> _showChangePasswordDialog() async {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+    bool isOldPasswordVisible = false;
+    bool isNewPasswordVisible = false;
+    bool isConfirmPasswordVisible = false;
+    bool isLoading = false;
+    String? errorMessage; // Error message to display in dialog
+
+    // Store root context for SnackBars
+    final rootContext = context;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: const [
+              Icon(Icons.lock_reset_rounded, color: AppColors.primary, size: 28),
+              SizedBox(width: 12),
+              Text(
+                'Ganti Password',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 18,
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Masukkan password lama dan password baru Anda',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                    height: 1.5,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // Error message display
+                if (errorMessage != null) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red.shade700, size: 20),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            errorMessage!,
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+                // Old Password
+                TextField(
+                  controller: oldPasswordController,
+                  obscureText: !isOldPasswordVisible,
+                  enabled: !isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Password Lama',
+                    hintText: 'Masukkan password lama',
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isOldPasswordVisible
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          isOldPasswordVisible = !isOldPasswordVisible;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.inputFill,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // New Password
+                TextField(
+                  controller: newPasswordController,
+                  obscureText: !isNewPasswordVisible,
+                  enabled: !isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Password Baru',
+                    hintText: 'Masukkan password baru',
+                    prefixIcon: const Icon(Icons.lock_rounded),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isNewPasswordVisible
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          isNewPasswordVisible = !isNewPasswordVisible;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.inputFill,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Confirm Password
+                TextField(
+                  controller: confirmPasswordController,
+                  obscureText: !isConfirmPasswordVisible,
+                  enabled: !isLoading,
+                  decoration: InputDecoration(
+                    labelText: 'Konfirmasi Password Baru',
+                    hintText: 'Masukkan ulang password baru',
+                    prefixIcon: const Icon(Icons.lock_rounded),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        isConfirmPasswordVisible
+                            ? Icons.visibility_rounded
+                            : Icons.visibility_off_rounded,
+                      ),
+                      onPressed: () {
+                        setDialogState(() {
+                          isConfirmPasswordVisible = !isConfirmPasswordVisible;
+                        });
+                      },
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: AppColors.inputFill,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Password minimal 6 karakter',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary.withOpacity(0.8),
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLoading ? null : () => Navigator.pop(dialogContext),
+              child: const Text(
+                'Batal',
+                style: TextStyle(
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: isLoading
+                  ? null
+                  : () async {
+                      // Clear previous error
+                      setDialogState(() => errorMessage = null);
+
+                      // Validation
+                      if (oldPasswordController.text.isEmpty ||
+                          newPasswordController.text.isEmpty ||
+                          confirmPasswordController.text.isEmpty) {
+                        setDialogState(() {
+                          errorMessage = 'Semua field harus diisi';
+                        });
+                        return;
+                      }
+
+                      if (newPasswordController.text.length < 6) {
+                        setDialogState(() {
+                          errorMessage = 'Password baru minimal 6 karakter';
+                        });
+                        return;
+                      }
+
+                      if (newPasswordController.text != confirmPasswordController.text) {
+                        setDialogState(() {
+                          errorMessage = 'Password baru dan konfirmasi tidak cocok';
+                        });
+                        return;
+                      }
+
+                      setDialogState(() => isLoading = true);
+
+                      try {
+                        // Verify old password
+                        final isValid = await _authController.verifyPassword(
+                          _username,
+                          oldPasswordController.text,
+                        );
+
+                        if (!isValid) {
+                          setDialogState(() {
+                            isLoading = false;
+                            errorMessage = 'Password lama salah!';
+                          });
+                          return;
+                        }
+
+                        // Update password
+                        await _authController.updatePassword(
+                          _username,
+                          newPasswordController.text,
+                        );
+
+                        setDialogState(() => isLoading = false);
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                        }
+                        if (rootContext.mounted) {
+                          ScaffoldMessenger.of(rootContext).showSnackBar(
+                            SnackBar(
+                              content: const Text('Password berhasil diubah!'),
+                              backgroundColor: AppColors.success,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              margin: const EdgeInsets.all(16),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        setDialogState(() {
+                          isLoading = false;
+                          errorMessage = 'Error: $e';
+                        });
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
+              ),
+              child: isLoading
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text(
+                      'Ubah Password',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _openEditProfile() async {
@@ -445,48 +958,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
     }
-  }
-
-  void _tampilSaranKesan() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.stars_rounded, color: Colors.amber, size: 28),
-            SizedBox(width: 10),
-            Text(
-              'Saran & Kesan',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        content: const Text(
-          'Kesan:\nMata kuliah TPM ini seru banget karena langsung praktek bikin aplikasi nyata (Lapang.in) yang siap pakai.\n\n'
-          'Saran:\nSemoga ke depannya materi integrasi API dan AI bisa dibahas lebih mendalam lagi.',
-          style: TextStyle(height: 1.6, fontSize: 14),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF64E42),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: const Text(
-              'Tutup',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
@@ -553,30 +1024,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           fontWeight: FontWeight.w400,
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      // Status Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: ShapeDecoration(
-                          color:
-                              AppColors.primary.withOpacity(0.15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(9999),
-                          ),
-                        ),
-                        child: const Text(
-                          'Aktif',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
                       const SizedBox(height: 16),
                       // Edit Button
                       Container(
@@ -627,7 +1074,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatsCard('🏆', _highScore.toString(), 'Poin'),
+                    child: GestureDetector(
+                      onLongPress: () => _showRestoreHighscoreDialog(),
+                      child: _buildStatsCard('🏆', _highScore.toString(), 'Poin'),
+                    ),
                   ),
                 ],
               ),
@@ -851,17 +1301,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     _buildSettingDivider(),
                     _buildSettingItem(
-                      Icons.lock_rounded,
-                      'Keamanan Akun',
-                      'Ubah password',
-                      () {},
-                    ),
-                    _buildSettingDivider(),
-                    _buildSettingItem(
                       Icons.local_offer_rounded,
                       'Voucher',
                       'Lihat voucher',
                       _showVouchersDialog,
+                    ),
+                    _buildSettingDivider(),
+                    _buildSettingItem(
+                      Icons.lock_reset_rounded,
+                      'Ganti Password',
+                      'Ubah password akun',
+                      _showChangePasswordDialog,
                     ),
                     _buildSettingDivider(),
                     _buildSettingItem(

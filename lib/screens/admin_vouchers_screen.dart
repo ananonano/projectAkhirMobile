@@ -68,6 +68,7 @@ class _AdminVouchersScreenState extends State<AdminVouchersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Kelola Voucher'),

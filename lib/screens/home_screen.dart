@@ -34,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
   // Store ratings for each lapangan
   Map<int, double> _ratings = {};
   Map<int, int> _reviewCounts = {};
-  Map<int, int> _bookingCounts = {}; // Store booking counts for popularity
   
   // Filter state
   double? _filterPriceMin;
@@ -120,7 +119,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _lapangans = filteredData;
       _ratings = ratings;
       _reviewCounts = reviewCounts;
-      _bookingCounts = bookingCounts;
       _isLoading = false;
     });
   }
@@ -752,6 +750,7 @@ class _HomeScreenState extends State<HomeScreen> {
         NumberFormat.currency(locale: 'id', symbol: 'Rp ', decimalDigits: 0);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
@@ -890,9 +889,16 @@ class _HomeScreenState extends State<HomeScreen> {
                                   final isSelected = _sportType == sport['key'];
                                   return GestureDetector(
                                     onTap: () {
-                                      setState(() => _sportType = sport['key']);
+                                      setState(() {
+                                        // Toggle: if already selected, unselect it
+                                        if (_sportType == sport['key']) {
+                                          _sportType = null;
+                                        } else {
+                                          _sportType = sport['key'];
+                                        }
+                                      });
                                       _fetchLapangans(
-                                        type: sport['key'],
+                                        type: _sportType, // Will be null if unselected
                                         location: _locationController.text,
                                       );
                                     },

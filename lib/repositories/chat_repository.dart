@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import '../database/database.dart';
 import '../models/chat_message_model.dart';
 
@@ -12,15 +11,17 @@ class ChatRepository {
     return await database.insert('chat_messages', message.toMap());
   }
 
-  /// Ambil semua messages dari database, ordered by created_at
-  Future<List<ChatMessage>> getAllMessages() async {
+  /// Ambil semua messages dari database untuk user tertentu, ordered by created_at
+  Future<List<ChatMessage>> getAllMessages(int userId) async {
     try {
       final database = await _db.database;
       final data = await database.query(
         'chat_messages',
+        where: 'user_id = ?',
+        whereArgs: [userId],
         orderBy: 'created_at ASC',
       );
-      print('[DEBUG] Retrieved ${data.length} messages from database');
+      print('[DEBUG] Retrieved ${data.length} messages for user $userId from database');
       return data.map((map) => ChatMessage.fromMap(map)).toList();
     } catch (e) {
       print('[ERROR] Error fetching messages: $e');
@@ -28,12 +29,16 @@ class ChatRepository {
     }
   }
 
-  /// Clear semua chat history
-  Future<int> clearAllMessages() async {
+  /// Clear semua chat history untuk user tertentu
+  Future<int> clearAllMessages(int userId) async {
     try {
       final database = await _db.database;
-      int result = await database.delete('chat_messages');
-      print('[DEBUG] Cleared $result messages from database');
+      int result = await database.delete(
+        'chat_messages',
+        where: 'user_id = ?',
+        whereArgs: [userId],
+      );
+      print('[DEBUG] Cleared $result messages for user $userId from database');
       return result;
     } catch (e) {
       print('[ERROR] Error clearing messages: $e');

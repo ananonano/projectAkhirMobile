@@ -65,6 +65,11 @@ class ReviewRepository {
     }
   }
 
+  // Alias for getUserReview
+  Future<Review?> getUserReviewForLapangan(int userId, int lapanganId) async {
+    return getUserReview(userId, lapanganId);
+  }
+
   // Update an existing review
   Future<int> updateReview(Review review) async {
     try {
@@ -143,7 +148,7 @@ class ReviewRepository {
     try {
       Database db = await _dbHelper.database;
       
-      // First, let's try a simpler query to debug
+      // Sort by ID descending (newest first) for consistency with bookings
       final result = await db.rawQuery('''
         SELECT 
           r.id,
@@ -158,13 +163,13 @@ class ReviewRepository {
         FROM reviews r
         LEFT JOIN users u ON r.user_id = u.id
         LEFT JOIN lapangans l ON r.lapangan_id = l.id
-        ORDER BY r.created_at DESC
+        ORDER BY r.id DESC
         LIMIT ?
       ''', [limit]);
 
       print('[ReviewRepo] Loaded ${result.length} recent reviews');
       for (var review in result) {
-        print('[ReviewRepo] - ${review['user_name']} rated ${review['lapangan_name']}: ${review['rating']} stars at ${review['created_at']}');
+        print('[ReviewRepo] - ID: ${review['id']} | ${review['user_name']} rated ${review['lapangan_name']}: ${review['rating']} stars');
       }
       return result;
     } catch (e) {

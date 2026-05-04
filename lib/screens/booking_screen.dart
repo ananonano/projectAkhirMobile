@@ -2,9 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/booking_controller.dart';
+import '../database/database.dart';
 import '../models/booking_model.dart';
+import '../repositories/review_repository.dart';
 import '../theme/app_theme.dart';
+import 'detail_lapangan_screen.dart';
 import 'receipt_screen.dart';
+import 'root.dart'; // Import untuk akses bookingScreenRefreshNotifier
 
 class BookingScreen extends StatefulWidget {
   const BookingScreen({super.key});
@@ -16,6 +20,29 @@ class BookingScreen extends StatefulWidget {
 class _BookingScreenState extends State<BookingScreen> {
   final BookingController _controller = BookingController();
   int _selectedTabIndex = 0; // 0 = Upcoming, 1 = History
+  int _refreshKey = 0; // Key untuk trigger rebuild FutureBuilder
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen to booking refresh notifier
+    bookingScreenRefreshNotifier.addListener(_onBookingRefreshRequested);
+  }
+
+  @override
+  void dispose() {
+    bookingScreenRefreshNotifier.removeListener(_onBookingRefreshRequested);
+    super.dispose();
+  }
+
+  void _onBookingRefreshRequested() {
+    print('[BookingScreen] Refresh requested, rebuilding...');
+    if (mounted) {
+      setState(() {
+        _refreshKey++; // Increment key to trigger FutureBuilder rebuild
+      });
+    }
+  }
 
   Future<List<BookingModel>> _getMyBookings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -99,6 +126,126 @@ class _BookingScreenState extends State<BookingScreen> {
     }
 
     return ranges;
+  }
+
+  // Helper method to convert booking date and times to List<DateTime>
+  List<DateTime> _getBookingDateTimes(String tanggal, String jam) {
+    print('[BookingScreen] _getBookingDateTimes called');
+    print('[BookingScreen] tanggal: $tanggal');
+    print('[BookingScreen] jam: $jam');
+    
+    try {
+      // Parse tanggal (format: "dd MMM yyyy")
+      final dateFormat = DateFormat('dd MMM yyyy');
+      final bookingDate = dateFormat.parse(tanggal);
+      
+      // Parse jam (format: "08:00, 09:00, 10:00")
+      final times = jam.split(',').map((e) => e.trim()).toList();
+      
+      List<DateTime> dateTimes = [];
+      for (String timeStr in times) {
+        if (timeStr == '-' || timeStr.isEmpty) continue;
+        
+        try {
+          final timeParts = timeStr.split(':');
+          final hour = int.parse(timeParts[0]);
+          final minute = int.parse(timeParts[1]);
+          
+          dateTimes.add(DateTime(
+            bookingDate.year,
+            bookingDate.month,
+            bookingDate.day,
+            hour,
+            minute,
+          ));
+        } catch (e) {
+          print('[BookingScreen] Error parsing time "$timeStr": $e');
+          continue;
+        }
+      }
+      
+      final result = dateTimes.isEmpty ? [bookingDate] : dateTimes;
+      print('[BookingScreen] Result: $result');
+      return result;
+    } catch (e) {
+      print('[BookingScreen] Error parsing booking date times: $e');
+      return [];
+    }
+  }
+
+  Future<void> _handleReview(BookingModel booking) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id') ?? 0;
+      
+      if (userId == 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('User tidak ditemukan')),
+        );
+        return;
+      }
+
+      // Check if lapanganId is valid
+      final lapanganId = booking.lapanganId;
+      if (lapanganId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('ID Lapangan tidak valid')),
+          );
+        }
+        return;
+      }
+
+      // Load lapangan data
+      final db = await DatabaseHelper.instance.database;
+      final lapanganResult = await db.query(
+        'lapangans',
+        where: 'id = ?',
+        whereArgs: [lapanganId],
+      );
+
+      if (lapanganResult.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Lapangan tidak ditemukan')),
+          );
+        }
+        return;
+      }
+
+      final lapanganData = lapanganResult.first;
+
+      // Check if user already reviewed this lapangan
+      final reviewRepo = ReviewRepository();
+      final existingReview = await reviewRepo.getUserReviewForLapangan(
+        userId,
+        lapanganId,
+      );
+
+      // Navigate to detail lapangan screen with auto-open review
+      if (mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailLapanganScreen(
+              lapangan: lapanganData,
+              openReviewOnLoad: true,
+              existingReview: existingReview,
+            ),
+          ),
+        );
+        
+        // Refresh bookings after returning
+        setState(() {});
+      }
+    } catch (e) {
+      print('[BookingScreen] Error handling review: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 
   // Check if booking can be rescheduled (H-2 hours from earliest booking time)
@@ -239,6 +386,7 @@ class _BookingScreenState extends State<BookingScreen> {
         ),
       ),
       body: FutureBuilder<List<BookingModel>>(
+        key: ValueKey(_refreshKey), // Key untuk trigger rebuild saat refresh
         future: _getMyBookings(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -670,6 +818,10 @@ class _BookingScreenState extends State<BookingScreen> {
                                 metodeBayar: item.paymentMethod ?? 'QRIS',
                                 isFromHistory: true,
                                 status: item.status,
+                                transactionDateTime: item.createdAt != null 
+                                  ? DateTime.tryParse(item.createdAt!)
+                                  : null,
+                                bookingDateTimes: _getBookingDateTimes(item.tanggal, item.jam),
                               ),
                             ),
                           ),
@@ -717,13 +869,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       if (!isCancelled)
                         Expanded(
                           child: GestureDetector(
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Review coming soon'),
-                                ),
-                              );
-                            },
+                            onTap: () => _handleReview(item),
                             child: Container(
                               height: 48,
                               decoration: ShapeDecoration(
@@ -767,6 +913,10 @@ class _BookingScreenState extends State<BookingScreen> {
                                 metodeBayar: item.paymentMethod ?? 'QRIS',
                                 isFromHistory: true,
                                 status: item.status,
+                                transactionDateTime: item.createdAt != null 
+                                  ? DateTime.tryParse(item.createdAt!)
+                                  : null,
+                                bookingDateTimes: _getBookingDateTimes(item.tanggal, item.jam),
                               ),
                             ),
                           ),

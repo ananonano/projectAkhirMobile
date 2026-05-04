@@ -10,6 +10,7 @@ import '../widgets/voucher_selector.dart';
 import '../widgets/timezone_display_widget.dart';
 import '../theme/app_theme.dart';
 import 'receipt_screen.dart';
+import 'root.dart'; // Import untuk akses notifiers
 
 class PaymentScreen extends StatefulWidget {
   final Map<String, dynamic> lapangan;
@@ -389,16 +390,40 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final payment = _currencyController.calculatePayment(finalHargaIDR, _selectedCurrency);
       
       if (mounted) {
+        // Trigger refresh untuk booking screen, home screen, recommendations, dan profile stats
+        bookingScreenRefreshNotifier.value++;
+        homeScreenRefreshNotifier.value++;
+        recommendationsRefreshNotifier.value++;
+        profileStatsRefreshNotifier.value++;
+        
+        final transactionTime = DateTime.now(); // Capture transaction time
+        final bookingTimes = _getBookingDateTimes(); // Get booking times
+        final jamString = widget.selectedTimes.join(', ');
+        
+        // Debug logging
+        print('[PaymentScreen] ========== SENDING TO RECEIPT ==========');
+        print('[PaymentScreen] selectedDate: ${widget.selectedDate}');
+        print('[PaymentScreen] selectedTimes: ${widget.selectedTimes}');
+        print('[PaymentScreen] selectedTimes.length: ${widget.selectedTimes.length}');
+        print('[PaymentScreen] jam (joined): "$jamString"');
+        print('[PaymentScreen] jam.length: ${jamString.length}');
+        print('[PaymentScreen] jam.isEmpty: ${jamString.isEmpty}');
+        print('[PaymentScreen] bookingDateTimes: $bookingTimes');
+        print('[PaymentScreen] bookingDateTimes.length: ${bookingTimes.length}');
+        print('[PaymentScreen] transactionDateTime: $transactionTime');
+        print('[PaymentScreen] ==========================================');
+        
         Navigator.pushReplacement(context, MaterialPageRoute(
           builder: (_) => ReceiptScreen(
             bookingId: bookingId,
             namaLapangan: widget.lapangan['nama_lapangan'],
             tanggal: DateFormat('dd MMM yyyy').format(widget.selectedDate),
-            jam: widget.selectedTimes.join(', '),
+            jam: jamString,
             totalDibayar: payment['totalConverted']!,
             mataUang: _selectedCurrency,
             metodeBayar: _paymentMethod,
-            bookingDateTimes: _getBookingDateTimes(), // Pass all booking times
+            transactionDateTime: transactionTime, // Pass transaction time
+            bookingDateTimes: bookingTimes, // Pass all booking times
           ),
         ));
       }
@@ -463,6 +488,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final fmt = NumberFormat("#,###");
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Checkout')),
       body: SingleChildScrollView(

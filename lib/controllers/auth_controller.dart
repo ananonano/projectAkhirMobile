@@ -183,4 +183,10 @@ class AuthController {
     final user = await _userRepo.login(username, hashed);
     return user != null;
   }
+
+  // Update password untuk user tertentu
+  Future<void> updatePassword(String username, String newPassword) async {
+    final hashed = hashPassword(newPassword);
+    await _userRepo.updatePassword(username, hashed);
+  }
 }

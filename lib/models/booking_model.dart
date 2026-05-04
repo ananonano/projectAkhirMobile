@@ -51,6 +51,8 @@ class BookingModel {
       'total_harga': totalHarga,
       'status': status ?? 'completed',
       'payment_method': paymentMethod ?? 'QRIS',
+      // Set created_at dengan waktu lokal (bukan UTC)
+      'created_at': createdAt ?? DateTime.now().toIso8601String(),
     };
   }
 

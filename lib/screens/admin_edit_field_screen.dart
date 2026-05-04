@@ -4,27 +4,30 @@ import 'package:image_picker/image_picker.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:sqflite/sqflite.dart';
 import '../database/database.dart';
+import '../models/lapangan_model.dart';
 import '../theme/app_theme.dart';
 import 'map_picker_screen.dart';
 
-class AdminCreateFieldScreen extends StatefulWidget {
-  const AdminCreateFieldScreen({super.key});
+class AdminEditFieldScreen extends StatefulWidget {
+  final LapanganModel lapangan;
+
+  const AdminEditFieldScreen({super.key, required this.lapangan});
 
   @override
-  State<AdminCreateFieldScreen> createState() => _AdminCreateFieldScreenState();
+  State<AdminEditFieldScreen> createState() => _AdminEditFieldScreenState();
 }
 
-class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
-  final TextEditingController _namaController = TextEditingController();
-  final TextEditingController _hargaController = TextEditingController();
-  final TextEditingController _latController = TextEditingController();
-  final TextEditingController _lngController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  final TextEditingController _descController = TextEditingController();
-  final TextEditingController _jamBukaController = TextEditingController(text: '08:00');
-  final TextEditingController _jamTutupController = TextEditingController(text: '22:00');
+class _AdminEditFieldScreenState extends State<AdminEditFieldScreen> {
+  late TextEditingController _namaController;
+  late TextEditingController _hargaController;
+  late TextEditingController _latController;
+  late TextEditingController _lngController;
+  late TextEditingController _addressController;
+  late TextEditingController _descController;
+  late TextEditingController _jamBukaController;
+  late TextEditingController _jamTutupController;
 
-  String _jenisOlahraga = 'FUTSAL';
+  late String _jenisOlahraga;
   final List<String> _pilihanJenis = [
     'FUTSAL',
     'BASKETBALL',
@@ -33,7 +36,7 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
     'TENNIS',
   ];
 
-  final List<String> _selectedImagePaths = [];
+  List<String> _selectedImagePaths = [];
   List<Map<String, dynamic>> _allAmenities = [];
   Set<int> _selectedAmenityIds = {};
   bool _isLoadingAmenities = true;
@@ -41,6 +44,22 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
   @override
   void initState() {
     super.initState();
+    // Initialize controllers with existing data
+    _namaController = TextEditingController(text: widget.lapangan.namaLapangan);
+    _hargaController = TextEditingController(text: widget.lapangan.harga.toString());
+    _latController = TextEditingController(text: widget.lapangan.lat.toString());
+    _lngController = TextEditingController(text: widget.lapangan.lng.toString());
+    _addressController = TextEditingController(text: widget.lapangan.address ?? '');
+    _descController = TextEditingController(text: widget.lapangan.description ?? '');
+    _jamBukaController = TextEditingController(text: widget.lapangan.jamBuka);
+    _jamTutupController = TextEditingController(text: widget.lapangan.jamTutup);
+    _jenisOlahraga = widget.lapangan.jenis;
+    
+    // Load existing images
+    if (widget.lapangan.image != null && widget.lapangan.image!.isNotEmpty) {
+      _selectedImagePaths = widget.lapangan.image!.split(',');
+    }
+    
     _loadAmenities();
   }
 
@@ -60,12 +79,15 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
   Future<void> _loadAmenities() async {
     try {
       final amenities = await DatabaseHelper.instance.getAllAmenities();
+      final lapanganAmenities = await DatabaseHelper.instance.getAmenitiesForLapangan(widget.lapangan.id!);
+      
       setState(() {
         _allAmenities = amenities;
+        _selectedAmenityIds = lapanganAmenities.map((a) => a['amenity_id'] as int).toSet();
         _isLoadingAmenities = false;
       });
     } catch (e) {
-      print('[CreateField] Error loading amenities: $e');
+      print('[EditField] Error loading amenities: $e');
       setState(() => _isLoadingAmenities = false);
     }
   }
@@ -83,7 +105,9 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
   Future<void> _bukaPeta() async {
     final LatLng? result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const MapPickerScreen()),
+      MaterialPageRoute(
+        builder: (context) => const MapPickerScreen(),
+      ),
     );
 
     if (result != null) {
@@ -124,26 +148,30 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
     double lng = double.tryParse(lngStr) ?? 0.0;
 
     try {
-      // Insert lapangan with all fields
+      // Update lapangan with all fields
       Database db = await DatabaseHelper.instance.database;
-      final lapanganId = await db.insert('lapangans', {
-        'nama_lapangan': nama,
-        'jenis': _jenisOlahraga,
-        'harga': harga,
-        'lat': lat,
-        'lng': lng,
-        'description': description,
-        'address': address,
-        'image': _selectedImagePaths.join(','),
-        'jam_buka': jamBuka,
-        'jam_tutup': jamTutup,
-        'capacity': 10,
-      });
+      await db.update(
+        'lapangans',
+        {
+          'nama_lapangan': nama,
+          'jenis': _jenisOlahraga,
+          'harga': harga,
+          'lat': lat,
+          'lng': lng,
+          'description': description,
+          'address': address,
+          'image': _selectedImagePaths.join(','),
+          'jam_buka': jamBuka,
+          'jam_tutup': jamTutup,
+        },
+        where: 'id = ?',
+        whereArgs: [widget.lapangan.id],
+      );
 
       // Save amenities
       if (_selectedAmenityIds.isNotEmpty) {
         await DatabaseHelper.instance.saveAmenitiesForLapangan(
-          lapanganId,
+          widget.lapangan.id!,
           _selectedAmenityIds.toList(),
         );
       }
@@ -151,7 +179,7 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Lapangan berhasil ditambahkan!'),
+            content: Text('Lapangan berhasil diperbarui!'),
             backgroundColor: Colors.green,
           ),
         );
@@ -176,7 +204,7 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
       backgroundColor: const Color(0xFFFAFAF5),
       appBar: AppBar(
         title: const Text(
-          'Tambah Lapangan',
+          'Edit Lapangan',
           style: TextStyle(
             fontFamily: 'Lexend',
             fontWeight: FontWeight.w700,
@@ -201,18 +229,28 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
                   scrollDirection: Axis.horizontal,
                   itemCount: _selectedImagePaths.length,
                   itemBuilder: (context, index) {
+                    final imagePath = _selectedImagePaths[index];
+                    final isUrl = imagePath.startsWith('http');
+                    
                     return Padding(
                       padding: const EdgeInsets.only(right: 12.0),
                       child: Stack(
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
-                            child: Image.file(
-                              File(_selectedImagePaths[index]),
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                            ),
+                            child: isUrl
+                                ? Image.network(
+                                    imagePath,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Image.file(
+                                    File(imagePath),
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  ),
                           ),
                           Positioned(
                             right: 4,
@@ -451,7 +489,7 @@ class _AdminCreateFieldScreenState extends State<AdminCreateFieldScreen> {
                   ),
                 ),
                 child: const Text(
-                  'Simpan Lapangan',
+                  'Simpan Perubahan',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,

@@ -194,6 +194,18 @@ class _MapsScreenState extends State<MapsScreen> {
       return;
     }
 
+    // Validate destination coordinates
+    if (destination.latitude == 0.0 && destination.longitude == 0.0) {
+      print('[MapsScreen] Invalid destination coordinates: 0,0');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Koordinat lapangan tidak valid'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoadingRoute = true;
       _routePoints = [];
@@ -209,6 +221,8 @@ class _MapsScreenState extends State<MapsScreen> {
       );
 
       print('[MapsScreen] Fetching route from OSRM: $url');
+      print('[MapsScreen] From: ${_userLocation!.latitude},${_userLocation!.longitude}');
+      print('[MapsScreen] To: ${destination.latitude},${destination.longitude}');
 
       final response = await http.get(url);
 
@@ -245,19 +259,23 @@ class _MapsScreenState extends State<MapsScreen> {
                 '${(distance / 1000).toStringAsFixed(1)} km, '
                 '${(duration / 60).toStringAsFixed(0)} min');
         } else {
-          throw Exception('No route found');
+          final errorCode = data['code'] ?? 'Unknown';
+          final errorMessage = data['message'] ?? 'No route found';
+          print('[MapsScreen] OSRM Error: $errorCode - $errorMessage');
+          throw Exception('Rute tidak ditemukan: $errorMessage');
         }
       } else {
-        throw Exception('Failed to fetch route: ${response.statusCode}');
+        throw Exception('Server error: ${response.statusCode}');
       }
     } catch (e) {
       print('[MapsScreen] Error fetching route: $e');
       if (mounted) {
         setState(() => _isLoadingRoute = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Gagal memuat rute'),
+          SnackBar(
+            content: Text('Gagal memuat rute: ${e.toString().replaceAll('Exception: ', '')}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -359,13 +377,33 @@ class _MapsScreenState extends State<MapsScreen> {
   void _filterByJenis(String jenis) {
     setState(() {
       _selectedFilter = jenis;
-      if (jenis == 'All') {
-        _filteredLapangan = _allLapangan;
+      
+      // Apply filter with current search query
+      final currentQuery = _searchController.text;
+      if (currentQuery.isEmpty) {
+        // No search query, just apply filter
+        if (jenis == 'All') {
+          _filteredLapangan = _allLapangan;
+        } else {
+          _filteredLapangan = _allLapangan
+              .where((l) => l.jenis.toUpperCase() == jenis.toUpperCase())
+              .toList();
+        }
       } else {
-        _filteredLapangan = _allLapangan
-            .where((l) => l.jenis.toUpperCase() == jenis.toUpperCase())
+        // Has search query, apply both filter and search
+        List<LapanganModel> baseList = jenis == 'All'
+            ? _allLapangan
+            : _allLapangan
+                .where((l) => l.jenis.toUpperCase() == jenis.toUpperCase())
+                .toList();
+        
+        _filteredLapangan = baseList
+            .where((l) =>
+                l.namaLapangan.toLowerCase().contains(currentQuery.toLowerCase()) ||
+                (l.address?.toLowerCase().contains(currentQuery.toLowerCase()) ?? false))
             .toList();
       }
+      
       _selectedLapangan = null; // Reset selection when filter changes
     });
   }
@@ -708,10 +746,7 @@ class _MapsScreenState extends State<MapsScreen> {
                       _searchLapangan('');
                     },
                   )
-                : const Icon(
-                    Icons.tune_rounded,
-                    color: Color(0xFFA8A29E),
-                  ),
+                : null,
             border: InputBorder.none,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,

@@ -4,6 +4,7 @@ import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_bookings_screen.dart';
 import '../screens/admin_field_management_screen.dart';
 import '../screens/revenue_report_screen.dart';
+import '../screens/admin_database_screen.dart';
 import '../screens/login_screen.dart';
 
 enum AdminMenuIndex {
@@ -11,6 +12,7 @@ enum AdminMenuIndex {
   bookings,
   venueManager,
   revenue,
+  database,
   settings,
 }
 
@@ -26,7 +28,46 @@ class AdminDrawer extends StatelessWidget {
 
   void _logout(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    
+    // Save biometric data before clearing
+    final biometricEnabled = prefs.getBool('biometric_enabled');
+    final biometricUsername = prefs.getString('biometric_username');
+    final biometricRole = prefs.getString('biometric_role');
+    
+    // Save all highscores before clearing (untuk semua user)
+    Map<String, int> allHighscores = {};
+    final allKeys = prefs.getKeys();
+    for (String key in allKeys) {
+      if (key.startsWith('dodgeball_highscore_')) {
+        final score = prefs.getInt(key);
+        if (score != null) {
+          allHighscores[key] = score;
+        }
+      }
+    }
+    
+    print('[AdminDrawer] Saved ${allHighscores.length} highscores before logout');
+    
+    // Clear all session data
     await prefs.clear();
+    
+    // Restore biometric data if it existed
+    if (biometricEnabled != null && biometricEnabled) {
+      await prefs.setBool('biometric_enabled', biometricEnabled);
+    }
+    if (biometricUsername != null) {
+      await prefs.setString('biometric_username', biometricUsername);
+    }
+    if (biometricRole != null) {
+      await prefs.setString('biometric_role', biometricRole);
+    }
+    
+    // Restore all highscores
+    for (var entry in allHighscores.entries) {
+      await prefs.setInt(entry.key, entry.value);
+      print('[AdminDrawer] Restored highscore: ${entry.key} = ${entry.value}');
+    }
+    
     if (context.mounted) {
       Navigator.pushAndRemoveUntil(
         context,
@@ -56,6 +97,9 @@ class AdminDrawer extends StatelessWidget {
         break;
       case AdminMenuIndex.revenue:
         screen = const RevenueReportScreen();
+        break;
+      case AdminMenuIndex.database:
+        screen = const AdminDatabaseScreen();
         break;
       case AdminMenuIndex.settings:
         screen = const AdminFieldManagementScreen(
@@ -91,9 +135,14 @@ class AdminDrawer extends StatelessWidget {
         'menu': AdminMenuIndex.revenue,
       },
       {
-        'label': 'Settings',
-        'icon': Icons.settings_rounded,
+        'label': 'Manajemen Lapangan',
+        'icon': Icons.domain_rounded,
         'menu': AdminMenuIndex.settings,
+      },
+      {
+        'label': 'Database',
+        'icon': Icons.storage_rounded,
+        'menu': AdminMenuIndex.database,
       },
     ];
 

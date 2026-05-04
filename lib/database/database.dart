@@ -22,7 +22,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 9,
+      version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -157,6 +157,16 @@ class DatabaseHelper {
         print('[DB] Upgrade warning v9: $e');
       }
     }
+
+    if (oldVersion < 10) {
+      try {
+        // Add user_id column to chat_messages table
+        await db.execute('ALTER TABLE chat_messages ADD COLUMN user_id INTEGER DEFAULT 1');
+        print('[DB] Successfully upgraded schema to v10 - Added user_id to chat_messages');
+      } catch (e) {
+        print('[DB] Upgrade warning v10: $e');
+      }
+    }
   }
 
   Future<bool> checkUsernameExists(String username) async {
@@ -259,9 +269,11 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE chat_messages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
         role TEXT NOT NULL,
         text TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
     ''');
 
@@ -543,6 +555,17 @@ class DatabaseHelper {
       return result.first;
     }
     return null;
+  }
+
+  // Update password user
+  Future<int> updateUserPassword(String username, String hashedPassword) async {
+    Database db = await instance.database;
+    return await db.update(
+      'users',
+      {'password': hashedPassword},
+      where: 'username = ?',
+      whereArgs: [username],
+    );
   }
 
   Future<int> insertLapangan(

@@ -20,6 +20,9 @@ final ValueNotifier<int> recommendationsRefreshNotifier = ValueNotifier<int>(0);
 // Global notifier untuk trigger refresh profile stats
 final ValueNotifier<int> profileStatsRefreshNotifier = ValueNotifier<int>(0);
 
+// Global notifier untuk trigger refresh booking screen setelah booking baru
+final ValueNotifier<int> bookingScreenRefreshNotifier = ValueNotifier<int>(0);
+
 // Global key untuk akses RootScreen dari child screens
 final GlobalKey<_RootScreenState> rootScreenKey = GlobalKey<_RootScreenState>();
 
@@ -174,6 +177,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver, Si
     }
     
     return Scaffold(
+      resizeToAvoidBottomInset: false, // Prevent navbar from moving when keyboard appears
       body: Stack(
         children: [
           // Main content with bottom navigation
@@ -314,7 +318,7 @@ class _RootScreenState extends State<RootScreen> with WidgetsBindingObserver, Si
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: const Icon(
-                      Icons.smart_toy_rounded,
+                      Icons.support_agent_rounded,
                       color: Colors.white,
                       size: 26,
                     ),

@@ -21,6 +21,7 @@ class ReceiptScreen extends StatefulWidget {
   final String? status;
   final DateTime? bookingDateTime; // Add booking datetime for timezone display (legacy)
   final List<DateTime>? bookingDateTimes; // Multiple booking times
+  final DateTime? transactionDateTime; // When the transaction was made
 
   const ReceiptScreen({
     super.key,
@@ -35,6 +36,7 @@ class ReceiptScreen extends StatefulWidget {
     this.status = 'completed',
     this.bookingDateTime,
     this.bookingDateTimes,
+    this.transactionDateTime,
   });
 
   @override
@@ -48,6 +50,16 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    
+    // Debug logging
+    print('[ReceiptScreen] ========== DEBUG INFO ==========');
+    print('[ReceiptScreen] Tanggal: ${widget.tanggal}');
+    print('[ReceiptScreen] Jam: ${widget.jam}');
+    print('[ReceiptScreen] TransactionDateTime: ${widget.transactionDateTime}');
+    print('[ReceiptScreen] BookingDateTimes: ${widget.bookingDateTimes}');
+    print('[ReceiptScreen] BookingDateTime (legacy): ${widget.bookingDateTime}');
+    print('[ReceiptScreen] ================================');
+    
     _animController = AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
     _scaleAnim = CurvedAnimation(parent: _animController, curve: Curves.elasticOut);
     _animController.forward();
@@ -262,6 +274,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                 ),
                 pw.SizedBox(height: 8),
                 
+                // Transaction Date
+                _buildPdfRow(
+                  'Transaction Date', 
+                  widget.transactionDateTime != null 
+                    ? DateFormat('dd MMM yyyy, HH:mm').format(widget.transactionDateTime!)
+                    : '-'
+                ),
+                pw.SizedBox(height: 8),
+                
                 // Payment Method
                 _buildPdfRow('Payment Method', widget.metodeBayar),
                 
@@ -469,7 +490,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                 width: 90,
                 height: 90,
                 decoration: BoxDecoration(
-                  color: isCancelled ? Colors.red.withOpacity(0.12) : AppColors.success.withOpacity(0.12),
+                  color: isCancelled ? Colors.red.withValues(alpha: 0.12) : AppColors.success.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -487,7 +508,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
             const SizedBox(height: 6),
             Text(
               isCancelled ? 'Booking kamu telah dibatalkan oleh admin' : 'Lapangan siap menunggumu 🎉',
-              style: TextStyle(color: AppColors.textSecondary.withOpacity(0.8), fontSize: 14),
+              style: TextStyle(color: AppColors.textSecondary.withValues(alpha: 0.8), fontSize: 14),
             ),
 
             const SizedBox(height: 28),
@@ -498,7 +519,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
-                border: isCancelled ? Border.all(color: Colors.red.withOpacity(0.2), width: 1.5) : null,
+                border: isCancelled ? Border.all(color: Colors.red.withValues(alpha: 0.2), width: 1.5) : null,
                 boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 16, offset: Offset(0, 4))],
               ),
               child: Column(
@@ -536,7 +557,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.1),
+                                color: AppColors.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
@@ -552,9 +573,77 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                           ],
                         ),
                         const Divider(height: 20),
-                        _receiptRow(Icons.calendar_today_rounded, 'Tanggal', widget.tanggal),
+                        // Booking Date & Time (when the field is booked for)
+                        _receiptRow(
+                          Icons.calendar_today_rounded, 
+                          'Tanggal Main', 
+                          widget.tanggal
+                        ),
                         const Divider(height: 20),
-                        _receiptRow(Icons.access_time_rounded, 'Jam', widget.jam),
+                        // Jam Main - Special handling for long text with Wrap
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: const [
+                                Icon(Icons.access_time_rounded, size: 16, color: AppColors.textSecondary),
+                                SizedBox(width: 8),
+                                Text('Jam Main', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Container(
+                              width: double.infinity,
+                              constraints: const BoxConstraints(minHeight: 40),
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
+                              ),
+                              child: widget.jam.isEmpty 
+                                ? const Text(
+                                    '⚠️ Jam tidak tersedia',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600, 
+                                      fontSize: 13, 
+                                      color: Colors.orange,
+                                      height: 1.4,
+                                    ),
+                                  )
+                                : Wrap(
+                                    spacing: 4,
+                                    runSpacing: 4,
+                                    children: widget.jam.split(',').map((time) {
+                                      return Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                                        ),
+                                        child: Text(
+                                          time.trim(),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w600, 
+                                            fontSize: 12, 
+                                            color: AppColors.primary,
+                                          ),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 20),
+                        _receiptRow(
+                          Icons.receipt_long_rounded, 
+                          'Tanggal Transaksi', 
+                          widget.transactionDateTime != null 
+                            ? DateFormat('dd MMM yyyy, HH:mm').format(widget.transactionDateTime!)
+                            : '-'
+                        ),
                         const Divider(height: 20),
                         _receiptRow(Icons.payment_rounded, 'Metode', widget.metodeBayar),
                         const Divider(height: 20),
@@ -584,16 +673,43 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
             const SizedBox(height: 20),
 
             // Timezone Display - Show booking time in multiple timezones
-            if (widget.bookingDateTimes != null && widget.bookingDateTimes!.isNotEmpty)
+            if (widget.bookingDateTimes != null && widget.bookingDateTimes!.isNotEmpty) ...[
               TimezoneDisplayWidget(
                 wibDateTimes: widget.bookingDateTimes,
                 compact: false,
-              )
-            else if (widget.bookingDateTime != null)
+              ),
+            ] else if (widget.bookingDateTime != null) ...[
               TimezoneDisplayWidget(
                 wibDateTime: widget.bookingDateTime,
                 compact: false,
               ),
+            ] else ...[
+              // No timezone data available
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Zona waktu tidak tersedia untuk booking ini',
+                        style: TextStyle(
+                          color: Colors.orange.shade800,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
 
             const SizedBox(height: 28),
 
@@ -644,6 +760,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
   Widget _receiptRow(IconData icon, String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
@@ -652,8 +769,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
             Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           ],
         ),
-        Flexible(
-          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary), textAlign: TextAlign.right),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            value, 
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.textPrimary), 
+            textAlign: TextAlign.right,
+            maxLines: 3,
+            overflow: TextOverflow.visible,
+          ),
         ),
       ],
     );

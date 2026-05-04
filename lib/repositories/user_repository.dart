@@ -45,4 +45,9 @@ class UserRepository {
     if (map == null) return null;
     return UserModel.fromMap(map);
   }
+
+  // Update password user
+  Future<void> updatePassword(String username, String hashedPassword) async {
+    await _db.updateUserPassword(username, hashedPassword);
+  }
 }

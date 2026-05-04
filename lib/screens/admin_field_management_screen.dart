@@ -4,6 +4,7 @@ import 'package:projectakhir/database/database.dart';
 import 'package:projectakhir/models/lapangan_model.dart';
 import 'package:projectakhir/theme/app_theme.dart';
 import 'admin_create_field_screen.dart';
+import 'admin_edit_field_screen.dart';
 import '../widgets/admin_drawer.dart';
 
 class AdminFieldManagementScreen extends StatefulWidget {
@@ -22,11 +23,24 @@ class AdminFieldManagementScreen extends StatefulWidget {
 class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen> {
   late Future<List<LapanganModel>> _lapanganFuture;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadLapangan();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   void _loadLapangan() {
@@ -77,18 +91,12 @@ class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen>
   }
 
   void _editLapangan(LapanganModel lapangan) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: const Color(0xFFFAFAF5),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminEditFieldScreen(lapangan: lapangan),
       ),
-      builder: (context) => EditFieldBottomSheet(
-        lapangan: lapangan,
-        onSave: _loadLapangan,
-      ),
-    );
+    ).then((_) => _loadLapangan());
   }
 
   @override
@@ -125,9 +133,9 @@ class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen>
       ),
       body: Stack(
         children: [
-          // Konten utama dengan padding atas untuk header
+          // Konten utama dengan padding atas untuk header + search bar
           Padding(
-            padding: const EdgeInsets.only(top: 80),
+            padding: const EdgeInsets.only(top: 150), // Increased for search bar
             child: RefreshIndicator(
               onRefresh: () async {
                 _loadLapangan();
@@ -149,7 +157,28 @@ class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen>
               );
             }
 
-            final lapangan = snapshot.data ?? [];
+            final allLapangan = snapshot.data ?? [];
+            
+            // Filter lapangan based on search query
+            final lapangan = allLapangan.where((field) {
+              if (_searchQuery.isEmpty) return true;
+              
+              final nama = field.namaLapangan.toLowerCase();
+              final jenis = field.jenis.toLowerCase();
+              final harga = field.harga.toString();
+              final alamat = (field.address ?? '').toLowerCase();
+              final deskripsi = (field.description ?? '').toLowerCase();
+              final jamBuka = field.jamBuka.toLowerCase();
+              final jamTutup = field.jamTutup.toLowerCase();
+              
+              return nama.contains(_searchQuery) ||
+                     jenis.contains(_searchQuery) ||
+                     harga.contains(_searchQuery) ||
+                     alamat.contains(_searchQuery) ||
+                     deskripsi.contains(_searchQuery) ||
+                     jamBuka.contains(_searchQuery) ||
+                     jamTutup.contains(_searchQuery);
+            }).toList();
 
             if (lapangan.isEmpty) {
               return Center(
@@ -157,46 +186,53 @@ class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen>
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
-                      Icons.domain_disabled_rounded,
+                      _searchQuery.isNotEmpty 
+                          ? Icons.search_off_rounded 
+                          : Icons.domain_disabled_rounded,
                       size: 60,
                       color: Colors.grey[300],
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Belum ada lapangan',
+                      _searchQuery.isNotEmpty 
+                          ? 'Tidak ada hasil untuk "$_searchQuery"'
+                          : 'Belum ada lapangan',
                       style: TextStyle(
                         color: Colors.grey[600],
                         fontSize: 14,
                         fontFamily: 'Lexend',
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const AdminCreateFieldScreen(),
-                          ),
-                        );
-                        if (result == true) {
-                          _loadLapangan();
-                        }
-                      },
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Tambah Lapangan'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                    if (_searchQuery.isEmpty) ...[
+                      const SizedBox(height: 24),
+                      ElevatedButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const AdminCreateFieldScreen(),
+                            ),
+                          );
+                          if (result == true) {
+                            _loadLapangan();
+                          }
+                        },
+                        icon: const Icon(Icons.add_rounded),
+                        label: const Text('Tambah Lapangan'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               );
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.fromLTRB(20, 45, 20, 24),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
               itemCount: lapangan.length,
               itemBuilder: (context, index) {
                 final field = lapangan[index];
@@ -505,6 +541,72 @@ class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen>
               scaffoldKey: _scaffoldKey,
             ),
           ),
+          
+          // Search Bar
+          Positioned(
+            top: 80,
+            left: 0,
+            right: 0,
+            child: Container(
+              color: const Color(0xFFFAFAF5),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+              child: Container(
+                height: 48,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFE8E8E4),
+                    width: 1,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0x0C000000),
+                      blurRadius: 2,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Cari lapangan, jenis, harga, lokasi...',
+                    hintStyle: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 14,
+                      fontFamily: 'Lexend',
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: Colors.grey[400],
+                      size: 20,
+                    ),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(
+                              Icons.clear_rounded,
+                              color: Colors.grey[400],
+                              size: 20,
+                            ),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontFamily: 'Lexend',
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -532,6 +634,8 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
   late TextEditingController _descController;
   late TextEditingController _jamBukaController;
   late TextEditingController _jamTutupController;
+  late TextEditingController _latController;
+  late TextEditingController _lngController;
   late String _selectedJenis;
   
   List<Map<String, dynamic>> _allAmenities = [];
@@ -560,6 +664,10 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
         TextEditingController(text: widget.lapangan.jamBuka);
     _jamTutupController =
         TextEditingController(text: widget.lapangan.jamTutup);
+    _latController =
+        TextEditingController(text: widget.lapangan.lat.toString());
+    _lngController =
+        TextEditingController(text: widget.lapangan.lng.toString());
     _selectedJenis = widget.lapangan.jenis;
     _loadAmenities();
   }
@@ -572,6 +680,8 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
     _descController.dispose();
     _jamBukaController.dispose();
     _jamTutupController.dispose();
+    _latController.dispose();
+    _lngController.dispose();
     super.dispose();
   }
 
@@ -606,8 +716,8 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
         jamBuka: _jamBukaController.text.trim(),
         jamTutup: _jamTutupController.text.trim(),
         capacity: widget.lapangan.capacity,
-        lat: widget.lapangan.lat,
-        lng: widget.lapangan.lng,
+        lat: double.tryParse(_latController.text) ?? widget.lapangan.lat,
+        lng: double.tryParse(_lngController.text) ?? widget.lapangan.lng,
         image: widget.lapangan.image,
         createdAt: widget.lapangan.createdAt,
       );
@@ -731,6 +841,27 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
             const SizedBox(height: 16),
             // Alamat
             _buildTextField('Alamat', _addressController),
+            const SizedBox(height: 16),
+            // Latitude & Longitude
+            Row(
+              spacing: 12,
+              children: [
+                Expanded(
+                  child: _buildTextField(
+                    'Latitude',
+                    _latController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+                Expanded(
+                  child: _buildTextField(
+                    'Longitude',
+                    _lngController,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             // Deskripsi
             _buildTextField(

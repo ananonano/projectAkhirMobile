@@ -28,8 +28,40 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
       print('[UserVouchers] Loading vouchers for: ${widget.username}');
       final vouchers = await _controller.getUserVouchers(widget.username);
       print('[UserVouchers] Loaded ${vouchers.length} vouchers');
+      
       if (mounted) {
-        setState(() => _vouchers = vouchers);
+        // Filter: Hapus voucher terpakai yang sudah lebih dari 1 hari
+        final now = DateTime.now();
+        final filteredVouchers = vouchers.where((voucher) {
+          if (voucher.isUsed && voucher.usedAt != null) {
+            try {
+              final usedDate = DateTime.parse(voucher.usedAt!);
+              final daysSinceUsed = now.difference(usedDate).inDays;
+              
+              // Hapus jika sudah lebih dari 1 hari
+              if (daysSinceUsed >= 1) {
+                print('[UserVouchers] Removing expired used voucher: ${voucher.id} (used ${daysSinceUsed} days ago)');
+                return false; // Filter out
+              }
+            } catch (e) {
+              print('[UserVouchers] Error parsing usedAt date: $e');
+            }
+          }
+          return true; // Keep voucher
+        }).toList();
+        
+        // Sort: Voucher aktif di atas, terpakai di bawah
+        filteredVouchers.sort((a, b) {
+          // Jika status berbeda, voucher aktif (isUsed=false) di atas
+          if (a.isUsed != b.isUsed) {
+            return a.isUsed ? 1 : -1; // false (aktif) < true (terpakai)
+          }
+          // Jika status sama, sort by created_at (terbaru di atas)
+          return b.createdAt.compareTo(a.createdAt);
+        });
+        
+        print('[UserVouchers] After filter & sort: ${filteredVouchers.length} vouchers');
+        setState(() => _vouchers = filteredVouchers);
       }
     } catch (e) {
       print('[UserVouchers] Error loading: $e');
@@ -59,7 +91,7 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.local_offer_rounded, size: 48, color: AppColors.primary.withOpacity(0.3)),
+                  Icon(Icons.local_offer_rounded, size: 48, color: AppColors.primary.withValues(alpha: 0.3)),
                   const SizedBox(height: 12),
                   const Text(
                     'Belum ada voucher',
@@ -86,7 +118,7 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
       constraints: const BoxConstraints(maxHeight: 400),
       child: ListView.builder(
         shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(),
         itemCount: _vouchers.length,
         itemBuilder: (context, index) {
               final voucher = _vouchers[index];
@@ -97,7 +129,7 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: const [BoxShadow(color: AppColors.cardShadow, blurRadius: 8, offset: Offset(0, 2))],
                   border: Border.all(
-                    color: voucher.isUsed ? Colors.grey.withOpacity(0.3) : AppColors.primary.withOpacity(0.3),
+                    color: voucher.isUsed ? Colors.grey.withValues(alpha: 0.3) : AppColors.primary.withValues(alpha: 0.3),
                     width: 1,
                   ),
                 ),
@@ -113,8 +145,8 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                             colors: [
-                              AppColors.primary.withOpacity(0.2),
-                              AppColors.primary.withOpacity(0.1),
+                              AppColors.primary.withValues(alpha: 0.2),
+                              AppColors.primary.withValues(alpha: 0.1),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(10),
@@ -159,7 +191,7 @@ class _UserVouchersWidgetState extends State<UserVouchersWidget> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: voucher.isUsed ? Colors.grey.withOpacity(0.2) : Colors.green.withOpacity(0.2),
+                                    color: voucher.isUsed ? Colors.grey.withValues(alpha: 0.2) : Colors.green.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(5),
                                   ),
                                   child: Text(

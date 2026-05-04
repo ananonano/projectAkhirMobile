@@ -1,10 +1,13 @@
 import 'package:intl/intl.dart';
 import '../models/booking_model.dart';
 import '../repositories/booking_repository.dart';
+import '../services/recommendation_service.dart';
+import '../screens/root.dart'; // Import for recommendationsRefreshNotifier
 
 /// Mengelola logika bisnis seputar booking lapangan
 class BookingController {
   final BookingRepository _repo = BookingRepository();
+  final RecommendationService _recommendationService = RecommendationService();
 
   // Ambil riwayat booking milik user yang sedang login
   Future<List<BookingModel>> getMyBookings(int userId) async {
@@ -25,6 +28,7 @@ class BookingController {
     required DateTime tanggal,
     required List<String> selectedTimes,
     required int hargaPerJam,
+    String? paymentMethod,
   }) async {
     final totalHarga = hargaPerJam * selectedTimes.length;
     final booking = BookingModel(
@@ -34,8 +38,28 @@ class BookingController {
       tanggal: DateFormat('dd MMM yyyy').format(tanggal),
       jam: selectedTimes.join(', '),
       totalHarga: totalHarga.toString(),
+      paymentMethod: paymentMethod ?? 'QRIS',
     );
-    return _repo.insertBooking(booking);
+    
+    final bookingId = await _repo.insertBooking(booking);
+    
+    // Update user preferences after successful booking (ML learning)
+    try {
+      await _recommendationService.updateUserPreferences(userId);
+      print('[BookingController] User preferences updated after booking');
+      
+      // Trigger recommendations refresh in home screen
+      recommendationsRefreshNotifier.value++;
+      print('[BookingController] Triggered recommendations refresh');
+      
+      // Trigger profile stats refresh
+      profileStatsRefreshNotifier.value++;
+      print('[BookingController] Triggered profile stats refresh');
+    } catch (e) {
+      print('[BookingController] Error updating preferences: $e');
+    }
+    
+    return bookingId;
   }
 
   // Cek apakah jadwal booking sudah lewat (untuk label "Selesai" / "Akan Datang")
@@ -49,5 +73,14 @@ class BookingController {
     } catch (_) {
       return false;
     }
+  }
+
+  // Reschedule booking to new date and time
+  Future<void> rescheduleBooking(int bookingId, String newTanggal, String newJam) async {
+    await _repo.rescheduleBooking(bookingId, newTanggal, newJam);
+    
+    // Trigger profile stats refresh after reschedule
+    profileStatsRefreshNotifier.value++;
+    print('[BookingController] Triggered profile stats refresh after reschedule');
   }
 }

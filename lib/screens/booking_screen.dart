@@ -20,7 +20,18 @@ class _BookingScreenState extends State<BookingScreen> {
   Future<List<BookingModel>> _getMyBookings() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id') ?? 0;
-    return _controller.getMyBookings(userId);
+    final username = prefs.getString('username') ?? '';
+    
+    print('[BookingScreen] Getting bookings for userId: $userId, username: $username');
+    
+    final bookings = await _controller.getMyBookings(userId);
+    
+    print('[BookingScreen] Found ${bookings.length} bookings');
+    for (var booking in bookings) {
+      print('[BookingScreen] Booking ID: ${booking.id}, User ID: ${booking.userId}, Lapangan: ${booking.namaLapangan}');
+    }
+    
+    return bookings;
   }
 
   List<BookingModel> _filterBookings(List<BookingModel> bookings) {
@@ -88,6 +99,125 @@ class _BookingScreenState extends State<BookingScreen> {
     }
 
     return ranges;
+  }
+
+  // Check if booking can be rescheduled (H-2 hours from earliest booking time)
+  bool _canReschedule(BookingModel booking) {
+    try {
+      // Parse booking date
+      final bookingDate = DateFormat('dd MMM yyyy').parse(booking.tanggal);
+      
+      // Get all booking times
+      final times = booking.jam.split(',').map((e) => e.trim()).toList();
+      if (times.isEmpty) return false;
+      
+      // Find earliest time
+      int earliestHour = 24;
+      for (String time in times) {
+        try {
+          int hour = int.parse(time.split(':')[0]);
+          if (hour < earliestHour) {
+            earliestHour = hour;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (earliestHour == 24) return false;
+      
+      // Create DateTime for earliest booking time
+      final earliestBookingTime = DateTime(
+        bookingDate.year,
+        bookingDate.month,
+        bookingDate.day,
+        earliestHour,
+        0,
+      );
+      
+      // Calculate deadline (H-2 hours)
+      final deadline = earliestBookingTime.subtract(const Duration(hours: 2));
+      
+      // Check if current time is before deadline
+      final now = DateTime.now();
+      return now.isBefore(deadline);
+    } catch (e) {
+      print('[BookingScreen] Error checking reschedule eligibility: $e');
+      return false;
+    }
+  }
+
+  // Get reschedule deadline message
+  String _getRescheduleDeadline(BookingModel booking) {
+    try {
+      final bookingDate = DateFormat('dd MMM yyyy').parse(booking.tanggal);
+      final times = booking.jam.split(',').map((e) => e.trim()).toList();
+      
+      int earliestHour = 24;
+      for (String time in times) {
+        try {
+          int hour = int.parse(time.split(':')[0]);
+          if (hour < earliestHour) {
+            earliestHour = hour;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      
+      if (earliestHour == 24) return '';
+      
+      final earliestBookingTime = DateTime(
+        bookingDate.year,
+        bookingDate.month,
+        bookingDate.day,
+        earliestHour,
+        0,
+      );
+      
+      final deadline = earliestBookingTime.subtract(const Duration(hours: 2));
+      return DateFormat('dd MMM yyyy HH:mm').format(deadline);
+    } catch (e) {
+      return '';
+    }
+  }
+
+  // Show reschedule dialog
+  void _showRescheduleDialog(BookingModel booking) {
+    if (!_canReschedule(booking)) {
+      final deadline = _getRescheduleDeadline(booking);
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Tidak Dapat Reschedule'),
+          content: Text(
+            'Maaf, waktu reschedule sudah lewat.\n\n'
+            'Reschedule hanya dapat dilakukan minimal 2 jam sebelum waktu booking terdekat.\n\n'
+            'Deadline reschedule: $deadline',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+    
+    // Show reschedule bottom sheet
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => RescheduleBottomSheet(booking: booking),
+    ).then((result) {
+      if (result == true) {
+        // Refresh bookings after reschedule
+        setState(() {});
+      }
+    });
   }
 
   @override
@@ -283,6 +413,7 @@ class _BookingScreenState extends State<BookingScreen> {
   Widget _buildBookingCard(BookingModel item, bool isSelesai) {
     final isCancelled = item.status == 'cancelled';
     final isUpcoming = !isSelesai && !isCancelled;
+    final bookingCode = 'BKG${item.id?.toString().padLeft(5, '0') ?? '00000'}';
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -326,6 +457,28 @@ class _BookingScreenState extends State<BookingScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         spacing: 4,
                         children: [
+                          // Booking Code
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8E8E4),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              bookingCode,
+                              style: const TextStyle(
+                                color: Color(0xFF416448),
+                                fontSize: 11,
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 4),
                           Text(
                             item.namaLapangan,
                             style: const TextStyle(
@@ -472,13 +625,7 @@ class _BookingScreenState extends State<BookingScreen> {
                       // Reschedule button
                       Expanded(
                         child: GestureDetector(
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Reschedule coming soon'),
-                              ),
-                            );
-                          },
+                          onTap: () => _showRescheduleDialog(item),
                           child: Container(
                             height: 48,
                             decoration: ShapeDecoration(
@@ -514,12 +661,13 @@ class _BookingScreenState extends State<BookingScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => ReceiptScreen(
+                                bookingId: item.id,
                                 namaLapangan: item.namaLapangan,
                                 tanggal: item.tanggal,
                                 jam: item.jam,
                                 totalDibayar: item.totalHargaInt.toDouble(),
                                 mataUang: 'IDR',
-                                metodeBayar: 'Telah Dibayar',
+                                metodeBayar: item.paymentMethod ?? 'QRIS',
                                 isFromHistory: true,
                                 status: item.status,
                               ),
@@ -610,12 +758,13 @@ class _BookingScreenState extends State<BookingScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => ReceiptScreen(
+                                bookingId: item.id,
                                 namaLapangan: item.namaLapangan,
                                 tanggal: item.tanggal,
                                 jam: item.jam,
                                 totalDibayar: item.totalHargaInt.toDouble(),
                                 mataUang: 'IDR',
-                                metodeBayar: 'Telah Dibayar',
+                                metodeBayar: item.paymentMethod ?? 'QRIS',
                                 isFromHistory: true,
                                 status: item.status,
                               ),
@@ -663,6 +812,491 @@ class _BookingScreenState extends State<BookingScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+// Reschedule Bottom Sheet Widget
+class RescheduleBottomSheet extends StatefulWidget {
+  final BookingModel booking;
+
+  const RescheduleBottomSheet({super.key, required this.booking});
+
+  @override
+  State<RescheduleBottomSheet> createState() => _RescheduleBottomSheetState();
+}
+
+class _RescheduleBottomSheetState extends State<RescheduleBottomSheet> {
+  final BookingController _controller = BookingController();
+  DateTime _selectedDate = DateTime.now();
+  List<String> _selectedTimes = [];
+  List<String> _availableTimes = [];
+  List<String> _bookedTimes = []; // Track booked times separately
+  bool _isLoading = false;
+  late int _maxSelectableSlots; // Jumlah jam yang bisa dipilih (sama dengan booking asli)
+
+  @override
+  void initState() {
+    super.initState();
+    // Set initial date to tomorrow
+    _selectedDate = DateTime.now().add(const Duration(days: 1));
+    
+    // Hitung jumlah jam dari booking asli
+    final originalTimes = widget.booking.jam.split(',').map((e) => e.trim()).toList();
+    _maxSelectableSlots = originalTimes.length;
+    
+    _generateAvailableTimes();
+    _loadBookedTimes();
+  }
+
+  void _generateAvailableTimes() {
+    _availableTimes = [];
+    for (int hour = 8; hour < 22; hour++) {
+      _availableTimes.add('${hour.toString().padLeft(2, '0')}:00');
+    }
+  }
+
+  Future<void> _loadBookedTimes() async {
+    setState(() => _isLoading = true);
+    try {
+      final lapanganId = widget.booking.lapanganId ?? 0;
+      if (lapanganId == 0) {
+        setState(() => _isLoading = false);
+        return;
+      }
+      final booked = await _controller.getBookedTimes(lapanganId, _selectedDate);
+      
+      setState(() {
+        // Store booked times instead of removing them
+        _bookedTimes = booked;
+        _selectedTimes.clear();
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('[Reschedule] Error loading booked times: $e');
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _pickDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && picked != _selectedDate) {
+      setState(() {
+        _selectedDate = picked;
+        _selectedTimes.clear();
+      });
+      await _loadBookedTimes();
+    }
+  }
+
+  bool _isTimePassed(String timeStr) {
+    final now = DateTime.now();
+    final selectedDateToday = _selectedDate.year == now.year &&
+        _selectedDate.month == now.month &&
+        _selectedDate.day == now.day;
+    if (!selectedDateToday) return false;
+
+    try {
+      final timeParts = timeStr.split(':');
+      final hour = int.parse(timeParts[0]);
+      return hour <= now.hour;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> _confirmReschedule() async {
+    if (_selectedTimes.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Pilih minimal 1 jam booking')),
+      );
+      return;
+    }
+
+    // Validasi: jumlah jam harus sama dengan booking asli
+    if (_selectedTimes.length != _maxSelectableSlots) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Anda harus memilih $_maxSelectableSlots jam (sama dengan booking asli)'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Konfirmasi Reschedule'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Booking Lama:', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Tanggal: ${widget.booking.tanggal}'),
+            Text('Jam: ${widget.booking.jam}'),
+            const SizedBox(height: 16),
+            const Text('Booking Baru:', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text('Tanggal: ${DateFormat('dd MMM yyyy').format(_selectedDate)}'),
+            Text('Jam: ${_selectedTimes.join(', ')}'),
+            const SizedBox(height: 16),
+            const Text(
+              'Apakah Anda yakin ingin reschedule booking ini?',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+            child: const Text('Ya, Reschedule', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    // Perform reschedule
+    setState(() => _isLoading = true);
+    try {
+      await _controller.rescheduleBooking(
+        widget.booking.id!,
+        DateFormat('dd MMM yyyy').format(_selectedDate),
+        _selectedTimes.join(', '),
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Booking berhasil di-reschedule!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to refresh parent
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+      ),
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Reschedule Booking',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              
+              // Current booking info
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Booking Saat Ini:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.booking.namaLapangan,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      '${widget.booking.tanggal} • ${widget.booking.jam}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Date picker
+              const Text(
+                'Pilih Tanggal Baru',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 12),
+              GestureDetector(
+                onTap: _pickDate,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.border),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_today_rounded, color: AppColors.primary),
+                      const SizedBox(width: 12),
+                      Text(
+                        DateFormat('EEEE, dd MMM yyyy').format(_selectedDate),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.arrow_drop_down_rounded),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Time picker
+              const Text(
+                'Pilih Jam Baru',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Info: jumlah jam yang harus dipilih
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue[200]!),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 18, color: Colors.blue[700]),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Pilih $_maxSelectableSlots jam (sama dengan booking asli)',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[900],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              if (_isLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                )
+              else
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _availableTimes.map((time) {
+                    final isSelected = _selectedTimes.contains(time);
+                    final isPassed = _isTimePassed(time);
+                    final isBooked = _bookedTimes.contains(time); // Check if booked
+                    final canSelect = _selectedTimes.length < _maxSelectableSlots || isSelected;
+                    
+                    // Disable if: passed, booked, or limit reached
+                    final isDisabled = isPassed || isBooked || (!canSelect && !isSelected);
+                    
+                    return GestureDetector(
+                      onTap: isDisabled
+                          ? null
+                          : () {
+                              setState(() {
+                                if (isSelected) {
+                                  _selectedTimes.remove(time);
+                                } else {
+                                  _selectedTimes.add(time);
+                                }
+                                _selectedTimes.sort();
+                              });
+                            },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isDisabled
+                              ? Colors.grey[200]
+                              : isSelected
+                                  ? AppColors.primary
+                                  : Colors.white,
+                          border: Border.all(
+                            color: isDisabled
+                                ? Colors.grey[300]!
+                                : isSelected
+                                    ? AppColors.primary
+                                    : AppColors.border,
+                            width: 1.5,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          time,
+                          style: TextStyle(
+                            color: isDisabled
+                                ? Colors.grey
+                                : isSelected
+                                    ? Colors.white
+                                    : AppColors.textPrimary,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              
+              if (_selectedTimes.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline_rounded, 
+                        color: AppColors.primary, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Dipilih: ${_selectedTimes.length}/$_maxSelectableSlots jam (${_selectedTimes.join(', ')})',
+                          style: const TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              
+              const SizedBox(height: 24),
+
+              // Confirm button
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _confirmReschedule,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: Colors.grey[300],
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 24,
+                          width: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Konfirmasi Reschedule',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -21,6 +21,12 @@ class AuthController {
     return _userRepo.login(username, hashed);
   }
 
+  // Login dengan email OR username + password
+  Future<UserModel?> loginWithEmailOrUsername(String emailOrUsername, String password) async {
+    final hashed = hashPassword(password);
+    return _userRepo.loginWithEmailOrUsername(emailOrUsername, hashed);
+  }
+
   // Simpan session ke SharedPreferences setelah login berhasil
   Future<void> saveSession(UserModel user) async {
     final prefs = await SharedPreferences.getInstance();
@@ -28,6 +34,12 @@ class AuthController {
     await prefs.setInt('user_id', user.id ?? 0);
     await prefs.setString('username', user.username);
     await prefs.setString('role', user.role);
+    
+    // Debug logging
+    print('[AuthController] Session saved:');
+    print('  - user_id: ${user.id}');
+    print('  - username: ${user.username}');
+    print('  - role: ${user.role}');
   }
 
   // Hapus session saat logout (tanpa hapus data biometrik & foto profil)
@@ -53,7 +65,9 @@ class AuthController {
   // Ambil user_id dari session aktif
   Future<int> getSessionUserId() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('user_id') ?? 0;
+    final userId = prefs.getInt('user_id') ?? 0;
+    print('[AuthController] getSessionUserId: $userId');
+    return userId;
   }
 
   // Ambil username dari session aktif
@@ -107,17 +121,66 @@ class AuthController {
     return isLoggedIn && isBioEnabled;
   }
 
-  // Register user baru
-  Future<bool> register(String username, String password) async {
-    final isTaken = await _userRepo.isUsernameTaken(username);
-    if (isTaken) return false;
+  // Register user baru dengan data lengkap
+  Future<Map<String, dynamic>> register({
+    required String username,
+    required String password,
+    String? name,
+    String? email,
+    String? phone,
+  }) async {
+    // Check username
+    final usernameTaken = await _userRepo.isUsernameTaken(username);
+    if (usernameTaken) {
+      return {
+        'success': false,
+        'message': 'Username sudah dipakai, gunakan username lain!',
+      };
+    }
+
+    // Check email
+    if (email != null && email.isNotEmpty) {
+      final emailTaken = await _userRepo.isEmailTaken(email);
+      if (emailTaken) {
+        return {
+          'success': false,
+          'message': 'Email sudah dipakai, gunakan email lain!',
+        };
+      }
+    }
+
+    // Check phone
+    if (phone != null && phone.isNotEmpty) {
+      final phoneTaken = await _userRepo.isPhoneTaken(phone);
+      if (phoneTaken) {
+        return {
+          'success': false,
+          'message': 'Nomor telepon sudah dipakai, gunakan nomor lain!',
+        };
+      }
+    }
 
     final user = UserModel(
       username: username,
       password: hashPassword(password),
+      name: name,
+      email: email,
+      phone: phone,
       role: 'user',
     );
+    
     await _userRepo.register(user);
-    return true;
+    
+    return {
+      'success': true,
+      'message': 'Registrasi berhasil!',
+    };
+  }
+
+  // Verify password untuk user tertentu (untuk payment confirmation)
+  Future<bool> verifyPassword(String username, String password) async {
+    final hashed = hashPassword(password);
+    final user = await _userRepo.login(username, hashed);
+    return user != null;
   }
 }

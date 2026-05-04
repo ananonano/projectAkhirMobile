@@ -1,12 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/booking_controller.dart';
 import '../repositories/review_repository.dart';
 import '../repositories/lapangan_image_repository.dart';
 import '../models/review_model.dart';
+import '../database/database.dart';
 import 'payment_screen.dart';
 import 'edit_lapangan_images_screen.dart';
+import 'root.dart';
 
 class DetailLapanganScreen extends StatefulWidget {
   final Map<String, dynamic> lapangan;
@@ -348,7 +353,28 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
   Future<void> _submitReview(int rating, String comment) async {
     try {
       int lapanganId = int.tryParse(widget.lapangan['id']?.toString() ?? '0') ?? 0;
-      int userId = 1; // TODO: Get from current logged-in user
+      
+      // Get current logged-in user ID from SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      final username = prefs.getString('username');
+      
+      if (username == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: Silakan login terlebih dahulu')),
+        );
+        return;
+      }
+      
+      // Get user data from database
+      final userData = await DatabaseHelper.instance.getUserByUsername(username);
+      if (userData == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Error: User tidak ditemukan')),
+        );
+        return;
+      }
+      
+      int userId = userData['id'] as int;
       
       if (lapanganId == 0) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -381,11 +407,32 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
 
       // Reload reviews
       await _loadReviews();
+      
+      // Trigger home screen refresh
+      homeScreenRefreshNotifier.value++;
+      print('[DetailScreen] Triggered home screen refresh after review submission');
     } catch (e) {
       print('[ReviewScreen] Error submitting review: $e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),
       );
+    }
+  }
+
+  IconData _getSportIcon(String sportKey) {
+    switch (sportKey.toUpperCase()) {
+      case 'FUTSAL':
+        return Icons.sports_soccer_rounded;
+      case 'BASKETBALL':
+        return Icons.sports_basketball_rounded;
+      case 'BADMINTON':
+        return Icons.sports_tennis_rounded; // Changed to tennis icon
+      case 'TENNIS':
+        return Icons.sports_baseball_rounded; // Changed to baseball icon
+      case 'MINI_SOCCER':
+        return Icons.sports_soccer_rounded;
+      default:
+        return Icons.sports_rounded;
     }
   }
 
@@ -422,8 +469,10 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
             children: [
               if (review.userImage != null && review.userImage!.isNotEmpty)
                 CircleAvatar(
-                  backgroundImage: NetworkImage(review.userImage!),
                   radius: 18,
+                  backgroundImage: review.userImage!.startsWith('http')
+                      ? NetworkImage(review.userImage!) as ImageProvider
+                      : FileImage(File(review.userImage!)),
                   onBackgroundImageError: (_, __) {},
                 )
               else
@@ -685,6 +734,105 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
     );
   }
 
+  Widget _buildMapPreview() {
+    // Get coordinates from lapangan data
+    double lat = double.tryParse(widget.lapangan['lat']?.toString() ?? '-7.797068') ?? -7.797068;
+    double lng = double.tryParse(widget.lapangan['lng']?.toString() ?? '110.370529') ?? 110.370529;
+    String address = widget.lapangan['address'] ?? 'Alamat tidak tersedia';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Map Container
+        Container(
+          width: double.infinity,
+          height: 216,
+          decoration: ShapeDecoration(
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(
+                width: 1,
+                color: Color(0xFFE5E2DC),
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: FlutterMap(
+            options: MapOptions(
+              initialCenter: LatLng(lat, lng),
+              initialZoom: 15.0,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.none, // Disable interactions in preview
+              ),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.projectakhir',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: LatLng(lat, lng),
+                    width: 40,
+                    height: 40,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF597D60),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.2),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.white,
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Address
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              Icons.location_on_outlined,
+              size: 20,
+              color: Color(0xFF597D60),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                address,
+                style: const TextStyle(
+                  color: Color(0xFF1A1C1A),
+                  fontSize: 14,
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w400,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     try {
@@ -822,7 +970,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                                     spacing: 4,
                                     children: [
                                       Icon(
-                                        Icons.sports_soccer_rounded,
+                                        _getSportIcon(widget.lapangan['jenis'] ?? 'FUTSAL'),
                                         size: 14,
                                         color: const Color(0xFF6B8F71),
                                       ),
@@ -906,11 +1054,18 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                                 ),
                                 GestureDetector(
                                   onTap: () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Maps coming soon'),
-                                      ),
-                                    );
+                                    // Navigate to Maps tab with this venue highlighted
+                                    final lapanganId = int.tryParse(widget.lapangan['id']?.toString() ?? '0');
+                                    print('[DetailScreen] Lihat Peta tapped, lapanganId: $lapanganId');
+                                    if (lapanganId != null && lapanganId > 0) {
+                                      // Pop back to root screen
+                                      Navigator.pop(context);
+                                      print('[DetailScreen] Popped, calling navigateToMaps...');
+                                      // Navigate to Maps tab with selected venue
+                                      rootScreenKey.currentState?.navigateToMaps(lapanganId);
+                                    } else {
+                                      print('[DetailScreen] ERROR: Invalid lapangan ID');
+                                    }
                                   },
                                   child: const Text(
                                     'Lihat Peta',
@@ -924,46 +1079,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                                 ),
                               ],
                             ),
-                            Container(
-                              width: double.infinity,
-                              height: 216,
-                              padding: const EdgeInsets.only(top: 16),
-                              decoration: ShapeDecoration(
-                                shape: RoundedRectangleBorder(
-                                  side: const BorderSide(
-                                    width: 1,
-                                    color: Color(0xFFE5E2DC),
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[100],
-                                  borderRadius: const BorderRadius.only(
-                                    bottomLeft: Radius.circular(11),
-                                    bottomRight: Radius.circular(11),
-                                  ),
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    Icons.map_rounded,
-                                    size: 60,
-                                    color: Colors.grey[400],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Text(
-                              widget.lapangan['address'] ?? 'Jl. Senayan No. 42, Kebayoran Baru, Jakarta Selatan',
-                              style: const TextStyle(
-                                color: Color(0xFF424842),
-                                fontSize: 16,
-                                fontFamily: 'Lexend',
-                                fontWeight: FontWeight.w400,
-                                height: 1.5,
-                              ),
-                            ),
+                            _buildMapPreview(),
                           ],
                         ),
 
@@ -1405,7 +1521,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                       Flexible(
                         flex: 1,
                         child: GestureDetector(
-                          onTap: () {
+                          onTap: () async {
                             if (_selectedTimes.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -1415,7 +1531,7 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                               );
                               return;
                             }
-                            Navigator.push(
+                            await Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder: (context) => PaymentScreen(
@@ -1425,6 +1541,14 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
                                 ),
                               ),
                             );
+                            // Refresh booked times after returning from payment
+                            if (mounted) {
+                              await _loadBookedTimes();
+                              // Clear selected times
+                              setState(() {
+                                _selectedTimes.clear();
+                              });
+                            }
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(

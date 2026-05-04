@@ -68,21 +68,21 @@ class _LoginScreenState extends State<LoginScreen> {
     if (role == 'admin') {
       Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const AdminDashboardScreen()));
     } else {
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const RootScreen()));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => RootScreen(key: rootScreenKey)));
     }
   }
 
   Future<void> _login() async {
-    final email = _emailController.text.trim();
+    final emailOrUsername = _emailController.text.trim();
     final password = _passwordController.text.trim();
-    if (email.isEmpty || password.isEmpty) {
-      _showSnack('Isi dulu email sama passwordnya ya', Colors.orange);
+    if (emailOrUsername.isEmpty || password.isEmpty) {
+      _showSnack('Isi dulu email/username sama passwordnya ya', Colors.orange);
       return;
     }
     setState(() => _isLoading = true);
     
-    // For now, use email as username for login
-    final user = await _authController.login(email, password);
+    // Login with email OR username
+    final user = await _authController.loginWithEmailOrUsername(emailOrUsername, password);
     setState(() => _isLoading = false);
     if (user != null) {
       await _authController.saveSession(user);
@@ -91,7 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _navigateBasedOnRole(user.role);
       }
     } else {
-      if (mounted) _showSnack('Email atau Password salah!', Colors.red);
+      if (mounted) _showSnack('Email/Username atau Password salah!', Colors.red);
     }
   }
 
@@ -174,7 +174,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                     // --- TITLE & SUBTITLE ---
                     const Text(
-                      'LAPANG',
+                      'LAPANG.IN',
                       style: TextStyle(
                         color: AppColors.primaryDark,
                         fontSize: 48,
@@ -193,12 +193,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // --- EMAIL FIELD ---
+                    // --- EMAIL OR USERNAME FIELD ---
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Email Address',
+                          'Email or Username',
                           style: TextStyle(
                             color: AppColors.primaryDark,
                             fontSize: 14,
@@ -209,15 +209,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 8),
                         TextField(
                           controller: _emailController,
-                          keyboardType: TextInputType.emailAddress,
+                          keyboardType: TextInputType.text,
                           decoration: InputDecoration(
-                            hintText: 'name@domain.com',
+                            hintText: 'name@domain.com or username',
                             hintStyle: const TextStyle(
                               color: Color(0xFFC2C8BF),
                               fontSize: 16,
                             ),
                             prefixIcon: const Icon(
-                              Icons.email_outlined,
+                              Icons.person_outline_rounded,
                               color: AppColors.primaryDark,
                             ),
                             border: OutlineInputBorder(

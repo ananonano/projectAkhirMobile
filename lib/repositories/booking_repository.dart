@@ -190,4 +190,24 @@ class BookingRepository {
       return [];
     }
   }
+
+  /// Reschedule booking to new date and time
+  Future<void> rescheduleBooking(int bookingId, String newTanggal, String newJam) async {
+    try {
+      final db = await _db.database;
+      await db.update(
+        'bookings',
+        {
+          'tanggal': newTanggal,
+          'jam': newJam,
+        },
+        where: 'id = ?',
+        whereArgs: [bookingId],
+      );
+      print('[BookingRepo] Booking $bookingId rescheduled to $newTanggal at $newJam');
+    } catch (e) {
+      print('[BookingRepo] Error rescheduling booking: $e');
+      rethrow;
+    }
+  }
 }

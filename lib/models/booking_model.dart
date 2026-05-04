@@ -8,6 +8,7 @@ class BookingModel {
   final String totalHarga;
   final String? createdAt;
   final String? status;
+  final String? paymentMethod;
 
   BookingModel({
     this.id,
@@ -19,6 +20,7 @@ class BookingModel {
     required this.totalHarga,
     this.createdAt,
     this.status = 'completed',
+    this.paymentMethod = 'QRIS',
   });
 
   // Dari Map (hasil query SQLite) ke Object
@@ -33,6 +35,7 @@ class BookingModel {
       totalHarga: map['total_harga']?.toString() ?? '0',
       createdAt: map['created_at'],
       status: map['status'] ?? 'completed',
+      paymentMethod: map['payment_method'] ?? 'QRIS',
     );
   }
 
@@ -47,6 +50,7 @@ class BookingModel {
       'jam': jam,
       'total_harga': totalHarga,
       'status': status ?? 'completed',
+      'payment_method': paymentMethod ?? 'QRIS',
     };
   }
 

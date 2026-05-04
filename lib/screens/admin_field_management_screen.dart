@@ -100,6 +100,29 @@ class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen>
         activeMenu: widget.activeMenu,
         scaffoldKey: _scaffoldKey,
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminCreateFieldScreen(),
+            ),
+          );
+          if (result == true) {
+            _loadLapangan();
+          }
+        },
+        backgroundColor: AppColors.primary,
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
+        label: const Text(
+          'Tambah Lapangan',
+          style: TextStyle(
+            color: Colors.white,
+            fontFamily: 'Lexend',
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
       body: Stack(
         children: [
           // Konten utama dengan padding atas untuk header
@@ -173,41 +196,9 @@ class _AdminFieldManagementScreenState extends State<AdminFieldManagementScreen>
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              itemCount: lapangan.length + 1,
+              padding: const EdgeInsets.fromLTRB(20, 45, 20, 24),
+              itemCount: lapangan.length,
               itemBuilder: (context, index) {
-                if (index == lapangan.length) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () async {
-                          final result = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const AdminCreateFieldScreen(),
-                            ),
-                          );
-                          if (result == true) {
-                            _loadLapangan();
-                          }
-                        },
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text('Tambah Lapangan Baru'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
                 final field = lapangan[index];
                 return Padding(
                   padding: EdgeInsets.only(
@@ -542,6 +533,10 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
   late TextEditingController _jamBukaController;
   late TextEditingController _jamTutupController;
   late String _selectedJenis;
+  
+  List<Map<String, dynamic>> _allAmenities = [];
+  Set<int> _selectedAmenityIds = {};
+  bool _isLoadingAmenities = true;
 
   final List<String> _jenisOlahraga = [
     'FUTSAL',
@@ -566,6 +561,7 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
     _jamTutupController =
         TextEditingController(text: widget.lapangan.jamTutup);
     _selectedJenis = widget.lapangan.jenis;
+    _loadAmenities();
   }
 
   @override
@@ -577,6 +573,25 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
     _jamBukaController.dispose();
     _jamTutupController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadAmenities() async {
+    try {
+      final allAmenities = await DatabaseHelper.instance.getAllAmenities();
+      final lapanganAmenities = await DatabaseHelper.instance
+          .getAmenitiesForLapangan(widget.lapangan.id!);
+
+      setState(() {
+        _allAmenities = allAmenities;
+        _selectedAmenityIds = lapanganAmenities
+            .map((a) => a['amenity_id'] as int)
+            .toSet();
+        _isLoadingAmenities = false;
+      });
+    } catch (e) {
+      print('[EditField] Error loading amenities: $e');
+      setState(() => _isLoadingAmenities = false);
+    }
   }
 
   Future<void> _updateLapangan() async {
@@ -598,6 +613,12 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
       );
 
       await DatabaseHelper.instance.updateLapangan(updated);
+      
+      // Save amenities
+      await DatabaseHelper.instance.saveAmenitiesForLapangan(
+        widget.lapangan.id!,
+        _selectedAmenityIds.toList(),
+      );
 
       if (mounted) {
         Navigator.pop(context);
@@ -716,6 +737,59 @@ class _EditFieldBottomSheetState extends State<EditFieldBottomSheet> {
               'Deskripsi',
               _descController,
               maxLines: 3,
+            ),
+            const SizedBox(height: 16),
+            // Fasilitas
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: 8,
+              children: [
+                const Text(
+                  'Fasilitas',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF1A1C1A),
+                  ),
+                ),
+                if (_isLoadingAmenities)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _allAmenities.map((amenity) {
+                      final amenityId = amenity['id'] as int;
+                      final isSelected = _selectedAmenityIds.contains(amenityId);
+                      return FilterChip(
+                        label: Text(amenity['name'] as String),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedAmenityIds.add(amenityId);
+                            } else {
+                              _selectedAmenityIds.remove(amenityId);
+                            }
+                          });
+                        },
+                        selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                        checkmarkColor: AppColors.primary,
+                        labelStyle: TextStyle(
+                          color: isSelected ? AppColors.primary : const Color(0xFF78716C),
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+              ],
             ),
             const SizedBox(height: 24),
             // Buttons

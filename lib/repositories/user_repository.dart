@@ -24,8 +24,25 @@ class UserRepository {
     return _db.checkUsernameExists(username);
   }
 
+  // Cek apakah email sudah dipakai
+  Future<bool> isEmailTaken(String email) async {
+    return _db.checkEmailExists(email);
+  }
+
+  // Cek apakah phone sudah dipakai
+  Future<bool> isPhoneTaken(String phone) async {
+    return _db.checkPhoneExists(phone);
+  }
+
   // Daftarkan user baru
   Future<int> register(UserModel user) async {
     return _db.registerUser(user.toMap());
+  }
+
+  // Login dengan email OR username
+  Future<UserModel?> loginWithEmailOrUsername(String emailOrUsername, String hashedPassword) async {
+    final map = await _db.loginWithEmailOrUsername(emailOrUsername, hashedPassword);
+    if (map == null) return null;
+    return UserModel.fromMap(map);
   }
 }

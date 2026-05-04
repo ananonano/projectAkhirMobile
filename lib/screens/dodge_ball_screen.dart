@@ -5,6 +5,7 @@ import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../controllers/voucher_controller.dart';
 import '../models/voucher_model.dart';
+import 'root.dart'; // Import untuk profileStatsRefreshNotifier
 
 class DodgeBallScreen extends StatefulWidget {
   const DodgeBallScreen({super.key});
@@ -85,6 +86,10 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     final prefs = await SharedPreferences.getInstance();
     final username = prefs.getString('username') ?? 'guest';
     await prefs.setInt('dodgeball_highscore_$username', score);
+    
+    // Trigger profile stats refresh after saving new highscore
+    profileStatsRefreshNotifier.value++;
+    print('[DodgeBall] Triggered profile stats refresh after new highscore: $score');
   }
 
   // --- SENSOR 1: AKSELEROMETER ---

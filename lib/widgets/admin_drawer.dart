@@ -86,11 +86,6 @@ class AdminDrawer extends StatelessWidget {
         'menu': AdminMenuIndex.bookings,
       },
       {
-        'label': 'Venue Manager',
-        'icon': Icons.domain_rounded,
-        'menu': AdminMenuIndex.venueManager,
-      },
-      {
         'label': 'Revenue',
         'icon': Icons.trending_up_rounded,
         'menu': AdminMenuIndex.revenue,

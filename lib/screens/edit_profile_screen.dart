@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../database/database.dart';
 import '../theme/app_theme.dart';
+import 'root.dart'; // Import untuk akses profileImageUpdateNotifier
 
 class EditProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -16,6 +17,7 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  late TextEditingController _usernameController;
   late TextEditingController _nameController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
@@ -28,6 +30,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _usernameController = TextEditingController(text: widget.user.username);
     _nameController = TextEditingController(text: widget.user.name ?? '');
     _emailController = TextEditingController(text: widget.user.email ?? '');
     _phoneController = TextEditingController(text: widget.user.phone ?? '');
@@ -36,6 +39,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -70,6 +74,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
+    if (_usernameController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Username tidak boleh kosong')),
+      );
+      return;
+    }
+
     if (_emailController.text.isNotEmpty &&
         !_emailController.text.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,9 +92,58 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Check unique constraints
+      if (_usernameController.text != widget.user.username) {
+        final usernameExists = await _dbHelper.checkUsernameExistsExcept(
+          _usernameController.text,
+          widget.user.id!,
+        );
+        if (usernameExists) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Username sudah dipakai, gunakan username lain!')),
+            );
+          }
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
+      if (_emailController.text.isNotEmpty && _emailController.text != widget.user.email) {
+        final emailExists = await _dbHelper.checkEmailExistsExcept(
+          _emailController.text,
+          widget.user.id!,
+        );
+        if (emailExists) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Email sudah dipakai, gunakan email lain!')),
+            );
+          }
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
+      if (_phoneController.text.isNotEmpty && _phoneController.text != widget.user.phone) {
+        final phoneExists = await _dbHelper.checkPhoneExistsExcept(
+          _phoneController.text,
+          widget.user.id!,
+        );
+        if (phoneExists) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('No telepon sudah dipakai, gunakan no telepon lain!')),
+            );
+          }
+          setState(() => _isLoading = false);
+          return;
+        }
+      }
+
       final updatedUser = UserModel(
         id: widget.user.id,
-        username: widget.user.username,
+        username: _usernameController.text,
         password: widget.user.password,
         name: _nameController.text,
         email: _emailController.text.isNotEmpty ? _emailController.text : null,
@@ -99,9 +159,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       // Simpan foto ke SharedPreferences
       if (_selectedImagePath != null && _selectedImagePath!.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('profile_image_${widget.user.username}', _selectedImagePath!);
+        await prefs.setString('profile_image_${updatedUser.username}', _selectedImagePath!);
         print('[EditProfile] Image saved to SharedPreferences: $_selectedImagePath');
       }
+
+      // Update session username if changed
+      if (_usernameController.text != widget.user.username) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('username', _usernameController.text);
+        print('[EditProfile] Session username updated to: ${_usernameController.text}');
+      }
+
+      // Trigger global notifier untuk update profile image di navbar
+      profileImageUpdateNotifier.value++;
+      print('[EditProfile] Profile image notifier triggered');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -131,6 +202,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       await db.update(
         'users',
         {
+          'username': user.username,
           'name': user.name,
           'email': user.email,
           'phone': user.phone,
@@ -255,6 +327,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 40),
 
             // Form Fields
+            _buildTextField(
+              controller: _usernameController,
+              label: 'Username',
+              hint: 'Masukkan username Anda',
+              prefixIcon: Icons.person_outline_rounded,
+            ),
+            const SizedBox(height: 20),
             _buildTextField(
               controller: _nameController,
               label: 'Nama Lengkap',

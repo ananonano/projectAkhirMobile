@@ -144,7 +144,15 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                     return Center(child: Text('Error: ${snapshot.error}'));
                   }
 
-                  final bookings = snapshot.data ?? [];
+                  final bookingsData = snapshot.data ?? [];
+
+                  // Create a mutable copy and sort by ID descending (newest first)
+                  final bookings = List<Map<String, dynamic>>.from(bookingsData);
+                  bookings.sort((a, b) {
+                    final idA = a['id'] ?? 0;
+                    final idB = b['id'] ?? 0;
+                    return idB.compareTo(idA); // Descending order
+                  });
 
                   if (bookings.isEmpty) {
                     return Center(
@@ -164,8 +172,7 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                   }
 
                   return ListView.builder(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 16),
+                    padding: const EdgeInsets.fromLTRB(20, 45, 20, 24),
                     itemCount: bookings.length,
                     itemBuilder: (context, index) {
                       final booking = bookings[index];

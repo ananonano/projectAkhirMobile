@@ -54,8 +54,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       print('[DEBUG DASHBOARD] Total bookings loaded: ${allBookings.length}');
       
       final todayDate = DateTime.now();
-      final todayDateOnly = DateTime(todayDate.year, todayDate.month, todayDate.day);
-      final todayDateStr = DateFormat('yyyy-MM-dd').format(todayDate);
+      // Database uses "dd MMM yyyy" format like "04 May 2026"
+      final todayDateStr = DateFormat('dd MMM yyyy').format(todayDate);
       
       print('[DEBUG DASHBOARD] Today date: $todayDateStr');
       print('[DEBUG DASHBOARD] All booking dates:');
@@ -67,11 +67,31 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           .where((b) => (b['tanggal'] ?? '').toString() == todayDateStr)
           .toList();
       
+      print('[DEBUG DASHBOARD] Bookings today count: ${bookingsToday.length}');
+      
       _bookingsToday = bookingsToday.length;
-      _revenueToday = bookingsToday.fold(0.0, (sum, b) {
-        final harga = b['total_harga'] ?? 0;
-        return sum + (harga is int ? harga.toDouble() : (harga as double? ?? 0));
-      });
+      
+      // Calculate revenue today - handle String, int, and double types
+      _revenueToday = 0;
+      for (var b in bookingsToday) {
+        final hargaRaw = b['total_harga'];
+        double harga = 0;
+        
+        if (hargaRaw is String) {
+          // Remove "Rp" and dots, then parse
+          final cleanStr = hargaRaw.replaceAll('Rp', '').replaceAll('.', '').replaceAll(',', '').trim();
+          harga = double.tryParse(cleanStr) ?? 0;
+        } else if (hargaRaw is int) {
+          harga = hargaRaw.toDouble();
+        } else if (hargaRaw is double) {
+          harga = hargaRaw;
+        }
+        
+        _revenueToday += harga;
+        print('[DEBUG DASHBOARD] Booking revenue: $hargaRaw -> $harga');
+      }
+      
+      print('[DEBUG DASHBOARD] Total revenue today: $_revenueToday');
 
       // Load active fields count
       final activeFieldIds = <int>{};
@@ -80,40 +100,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
       _activeFields = activeFieldIds.length;
 
-      // Get recent bookings (today and past dates) sorted by newest first
-      _recentBookings = [];
+      // Get recent bookings (all bookings) sorted by newest first (by ID)
+      _recentBookings = List.from(allBookings);
       
-      for (var booking in allBookings) {
-        try {
-          // Database stores dates in "dd MMM yyyy" format like "02 May 2026"
-          final bookingDate = DateFormat('dd MMM yyyy').parse(booking['tanggal'] ?? '');
-          // Include today and all past dates
-          if (!bookingDate.isAfter(todayDateOnly)) {
-            _recentBookings.add(booking);
-          }
-        } catch (e) {
-          print('[DEBUG DASHBOARD] Error parsing date for booking: ${booking['tanggal']}, error: $e');
-        }
-      }
+      print('[DEBUG DASHBOARD] Recent bookings before sorting: ${_recentBookings.length}');
       
-      print('[DEBUG DASHBOARD] Recent bookings after filtering: ${_recentBookings.length}');
-      
-      // Sort by date (newest first)
+      // Sort by ID (newest first - higher ID = more recent)
       _recentBookings.sort((a, b) {
-        try {
-          final dateA = DateFormat('dd MMM yyyy').parse(a['tanggal'] ?? '');
-          final dateB = DateFormat('dd MMM yyyy').parse(b['tanggal'] ?? '');
-          return dateB.compareTo(dateA);
-        } catch (e) {
-          return 0;
-        }
+        final idA = a['id'] ?? 0;
+        final idB = b['id'] ?? 0;
+        return idB.compareTo(idA); // Descending order (newest first)
       });
       
       // Take only top 5 for dashboard
       _recentBookings = _recentBookings.take(5).toList();
       print('[DEBUG DASHBOARD] Final recent bookings (top 5): ${_recentBookings.length}');
       for (var b in _recentBookings) {
-        print('[DEBUG DASHBOARD] - ${b['nama_lapangan']} on ${b['tanggal']} at ${b['jam']}');
+        print('[DEBUG DASHBOARD] - ID: ${b['id']} | ${b['nama_lapangan']} on ${b['tanggal']} at ${b['jam']}');
       }
 
       // For reviews, load all recent reviews from all lapangans

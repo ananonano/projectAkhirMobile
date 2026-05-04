@@ -1,0 +1,1364 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:flutter_compass/flutter_compass.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'dart:async';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
+import '../database/database.dart';
+import '../models/lapangan_model.dart';
+import '../repositories/review_repository.dart';
+import '../widgets/direction_arrow_painter.dart';
+import 'detail_lapangan_screen.dart';
+
+class MapsScreen extends StatefulWidget {
+  final int? selectedLapanganId; // Add parameter to receive selected venue ID
+  
+  const MapsScreen({super.key, this.selectedLapanganId});
+
+  @override
+  State<MapsScreen> createState() => _MapsScreenState();
+}
+
+class _MapsScreenState extends State<MapsScreen> {
+  final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  final ReviewRepository _reviewRepository = ReviewRepository();
+  final MapController _mapController = MapController();
+  final TextEditingController _searchController = TextEditingController();
+  
+  List<LapanganModel> _allLapangan = [];
+  List<LapanganModel> _filteredLapangan = [];
+  LapanganModel? _selectedLapangan;
+  String _selectedFilter = 'All';
+  
+  // Store ratings for selected lapangan
+  double _selectedRating = 0.0;
+  int _selectedReviewCount = 0;
+  
+  // User location
+  LatLng? _userLocation;
+  bool _isLoadingLocation = false;
+  double? _userHeading; // Compass heading in degrees
+  StreamSubscription<CompassEvent>? _compassSubscription;
+  double _mapRotation = 0.0; // Map rotation in degrees
+  
+  // Routing
+  List<LatLng> _routePoints = [];
+  bool _isLoadingRoute = false;
+  bool _showRoute = false;
+  double _routeDistance = 0.0; // in meters
+  double _routeDuration = 0.0; // in seconds
+  
+  // Center of Yogyakarta
+  final LatLng _centerYogyakarta = const LatLng(-7.7956, 110.3695);
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLapangan();
+    _getUserLocation();
+    _startCompassListener();
+  }
+
+  @override
+  void didUpdateWidget(MapsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Check if selectedLapanganId changed
+    if (widget.selectedLapanganId != oldWidget.selectedLapanganId && 
+        widget.selectedLapanganId != null) {
+      print('[MapsScreen] didUpdateWidget - new selectedLapanganId: ${widget.selectedLapanganId}');
+      // Focus on the new venue
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted && _allLapangan.isNotEmpty) {
+          _focusOnVenue(widget.selectedLapanganId!);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _mapController.dispose();
+    _compassSubscription?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadLapangan() async {
+    final lapangan = await _dbHelper.getAllLapangan();
+    if (mounted) {
+      setState(() {
+        _allLapangan = lapangan;
+        _filteredLapangan = lapangan;
+      });
+      
+      // If selectedLapanganId is provided, focus on that venue AFTER data is loaded
+      if (widget.selectedLapanganId != null) {
+        // Add small delay to ensure UI is ready
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (mounted) {
+          _focusOnVenue(widget.selectedLapanganId!);
+        }
+      }
+    }
+  }
+
+  Future<void> _getUserLocation() async {
+    setState(() => _isLoadingLocation = true);
+    
+    try {
+      // Check if location services are enabled
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        print('[MapsScreen] Location services are disabled');
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      // Check location permission
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          print('[MapsScreen] Location permission denied');
+          setState(() => _isLoadingLocation = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        print('[MapsScreen] Location permission denied forever');
+        setState(() => _isLoadingLocation = false);
+        return;
+      }
+
+      // Get current position
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      if (mounted) {
+        setState(() {
+          _userLocation = LatLng(position.latitude, position.longitude);
+          _isLoadingLocation = false;
+        });
+        print('[MapsScreen] User location: ${position.latitude}, ${position.longitude}');
+      }
+    } catch (e) {
+      print('[MapsScreen] Error getting location: $e');
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
+    }
+  }
+
+  void _startCompassListener() {
+    _compassSubscription = FlutterCompass.events?.listen((CompassEvent event) {
+      if (mounted && event.heading != null) {
+        setState(() {
+          _userHeading = event.heading;
+        });
+      }
+    });
+  }
+
+  void _moveToUserLocation() {
+    if (_userLocation != null) {
+      // Get current zoom level to preserve it
+      final currentZoom = _mapController.camera.zoom;
+      _mapController.move(_userLocation!, currentZoom);
+      print('[MapsScreen] Moved to user location with zoom: $currentZoom');
+    } else {
+      // Try to get location again if not available
+      _getUserLocation().then((_) {
+        if (_userLocation != null) {
+          final currentZoom = _mapController.camera.zoom;
+          _mapController.move(_userLocation!, currentZoom);
+        }
+      });
+    }
+  }
+
+  Future<void> _fetchRoute(LatLng destination) async {
+    if (_userLocation == null) {
+      print('[MapsScreen] Cannot fetch route: user location not available');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lokasi Anda belum tersedia'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoadingRoute = true;
+      _routePoints = [];
+    });
+
+    try {
+      // OSRM API endpoint (free public server)
+      final url = Uri.parse(
+        'https://router.project-osrm.org/route/v1/driving/'
+        '${_userLocation!.longitude},${_userLocation!.latitude};'
+        '${destination.longitude},${destination.latitude}'
+        '?overview=full&geometries=geojson',
+      );
+
+      print('[MapsScreen] Fetching route from OSRM: $url');
+
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        
+        if (data['code'] == 'Ok' && data['routes'] != null && data['routes'].isNotEmpty) {
+          final route = data['routes'][0];
+          final coordinates = route['geometry']['coordinates'] as List;
+          
+          // Convert coordinates to LatLng
+          final routePoints = coordinates.map((coord) {
+            return LatLng(coord[1] as double, coord[0] as double);
+          }).toList();
+
+          // Get distance and duration
+          final distance = route['distance'] as double; // meters
+          final duration = route['duration'] as double; // seconds
+
+          if (mounted) {
+            setState(() {
+              _routePoints = routePoints;
+              _routeDistance = distance;
+              _routeDuration = duration;
+              _showRoute = true;
+              _isLoadingRoute = false;
+            });
+
+            // Fit map to show entire route
+            _fitMapToRoute();
+          }
+
+          print('[MapsScreen] Route fetched: ${routePoints.length} points, '
+                '${(distance / 1000).toStringAsFixed(1)} km, '
+                '${(duration / 60).toStringAsFixed(0)} min');
+        } else {
+          throw Exception('No route found');
+        }
+      } else {
+        throw Exception('Failed to fetch route: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('[MapsScreen] Error fetching route: $e');
+      if (mounted) {
+        setState(() => _isLoadingRoute = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Gagal memuat rute'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  void _fitMapToRoute() {
+    if (_routePoints.isEmpty) return;
+
+    // Calculate bounds
+    double minLat = _routePoints.first.latitude;
+    double maxLat = _routePoints.first.latitude;
+    double minLng = _routePoints.first.longitude;
+    double maxLng = _routePoints.first.longitude;
+
+    for (var point in _routePoints) {
+      if (point.latitude < minLat) minLat = point.latitude;
+      if (point.latitude > maxLat) maxLat = point.latitude;
+      if (point.longitude < minLng) minLng = point.longitude;
+      if (point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    // Add padding
+    final latPadding = (maxLat - minLat) * 0.2;
+    final lngPadding = (maxLng - minLng) * 0.2;
+
+    final bounds = LatLngBounds(
+      LatLng(minLat - latPadding, minLng - lngPadding),
+      LatLng(maxLat + latPadding, maxLng + lngPadding),
+    );
+
+    // Fit map to bounds
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: bounds,
+        padding: const EdgeInsets.all(50),
+      ),
+    );
+  }
+
+  void _clearRoute() {
+    setState(() {
+      _routePoints = [];
+      _showRoute = false;
+      _routeDistance = 0.0;
+      _routeDuration = 0.0;
+    });
+  }
+
+  void _focusOnVenue(int lapanganId) async {
+    print('[MapsScreen] Focusing on venue ID: $lapanganId');
+    print('[MapsScreen] Total lapangan loaded: ${_allLapangan.length}');
+    
+    // Find the lapangan by ID
+    try {
+      final lapangan = _allLapangan.firstWhere(
+        (l) => l.id == lapanganId,
+      );
+      
+      print('[MapsScreen] Found lapangan: ${lapangan.namaLapangan} at (${lapangan.lat}, ${lapangan.lng})');
+      
+      // Load rating for selected lapangan
+      if (lapangan.id != null) {
+        final rating = await _reviewRepository.getAverageRating(lapangan.id!);
+        final count = await _reviewRepository.getReviewCount(lapangan.id!);
+        
+        // Set as selected and move map to location
+        if (lapangan.lat != null && lapangan.lng != null) {
+          if (mounted) {
+            setState(() {
+              _selectedLapangan = lapangan;
+              _selectedRating = rating;
+              _selectedReviewCount = count;
+            });
+          }
+          
+          print('[MapsScreen] Selected lapangan set, moving map...');
+          
+          // Delay to ensure map is ready
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted) {
+              _mapController.move(
+                LatLng(lapangan.lat!, lapangan.lng!),
+                16.0, // Zoom in closer for better view
+              );
+              print('[MapsScreen] Map moved to venue location');
+            }
+          });
+        } else {
+          print('[MapsScreen] ERROR: Lapangan has no coordinates');
+        }
+      }
+    } catch (e) {
+      print('[MapsScreen] ERROR: Lapangan not found with ID $lapanganId');
+      print('[MapsScreen] Available IDs: ${_allLapangan.map((l) => l.id).toList()}');
+    }
+  }
+
+  void _filterByJenis(String jenis) {
+    setState(() {
+      _selectedFilter = jenis;
+      if (jenis == 'All') {
+        _filteredLapangan = _allLapangan;
+      } else {
+        _filteredLapangan = _allLapangan
+            .where((l) => l.jenis.toUpperCase() == jenis.toUpperCase())
+            .toList();
+      }
+      _selectedLapangan = null; // Reset selection when filter changes
+    });
+  }
+
+  void _searchLapangan(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        if (_selectedFilter == 'All') {
+          _filteredLapangan = _allLapangan;
+        } else {
+          _filteredLapangan = _allLapangan
+              .where((l) => l.jenis.toUpperCase() == _selectedFilter.toUpperCase())
+              .toList();
+        }
+      } else {
+        List<LapanganModel> baseList = _selectedFilter == 'All'
+            ? _allLapangan
+            : _allLapangan
+                .where((l) => l.jenis.toUpperCase() == _selectedFilter.toUpperCase())
+                .toList();
+        
+        _filteredLapangan = baseList
+            .where((l) =>
+                l.namaLapangan.toLowerCase().contains(query.toLowerCase()) ||
+                (l.address?.toLowerCase().contains(query.toLowerCase()) ?? false))
+            .toList();
+      }
+    });
+  }
+
+  void _onMarkerTap(LapanganModel lapangan) async {
+    // Clear route when selecting different venue
+    if (_selectedLapangan?.id != lapangan.id) {
+      _clearRoute();
+    }
+    
+    setState(() {
+      _selectedLapangan = lapangan;
+    });
+    
+    // Load rating for selected lapangan
+    if (lapangan.id != null) {
+      final rating = await _reviewRepository.getAverageRating(lapangan.id!);
+      final count = await _reviewRepository.getReviewCount(lapangan.id!);
+      
+      if (mounted) {
+        setState(() {
+          _selectedRating = rating;
+          _selectedReviewCount = count;
+        });
+      }
+    }
+    
+    // Animate to marker position
+    if (lapangan.lat != null && lapangan.lng != null) {
+      _mapController.move(
+        LatLng(lapangan.lat!, lapangan.lng!),
+        15.0,
+      );
+    }
+  }
+
+  void _navigateToDetail() {
+    if (_selectedLapangan != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DetailLapanganScreen(lapangan: _selectedLapangan!.toMap()),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFAFAF5),
+      body: Stack(
+        children: [
+          // Map Layer
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: _centerYogyakarta,
+              initialZoom: 12.0,
+              minZoom: 10.0,
+              maxZoom: 18.0,
+              onMapEvent: (event) {
+                // Track map rotation for compass
+                if (event is MapEventRotate || event is MapEventRotateEnd) {
+                  setState(() {
+                    _mapRotation = _mapController.camera.rotation;
+                  });
+                }
+              },
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.example.projectakhir',
+              ),
+              // Route Polyline Layer
+              if (_showRoute && _routePoints.isNotEmpty)
+                PolylineLayer(
+                  polylines: [
+                    Polyline(
+                      points: _routePoints,
+                      strokeWidth: 5.0,
+                      color: const Color(0xFF4285F4), // Google Maps blue
+                      borderStrokeWidth: 2.0,
+                      borderColor: Colors.white,
+                    ),
+                  ],
+                ),
+              // Gradient overlay (top and bottom)
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xCCF4F1EC),
+                      const Color(0x00F4F1EC),
+                      const Color(0x00F4F1EC),
+                      const Color(0xCCF4F1EC),
+                    ],
+                    stops: const [0.0, 0.15, 0.85, 1.0],
+                  ),
+                ),
+              ),
+              // Markers Layer - Lapangan markers
+              MarkerLayer(
+                markers: _filteredLapangan
+                    .where((l) => l.lat != null && l.lng != null)
+                    .map((lapangan) {
+                  final isSelected = _selectedLapangan?.id == lapangan.id;
+                  return Marker(
+                    point: LatLng(lapangan.lat!, lapangan.lng!),
+                    width: isSelected ? 70 : 52,
+                    height: isSelected ? 90 : 52,
+                    child: GestureDetector(
+                      onTap: () => _onMarkerTap(lapangan),
+                      child: _buildMarker(lapangan, isSelected),
+                    ),
+                  );
+                }).toList(),
+              ),
+              // User Location Marker
+              if (_userLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _userLocation!,
+                      width: 80,
+                      height: 80,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Outer circle (accuracy indicator)
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF4285F4).withOpacity(0.15),
+                            ),
+                          ),
+                          // Direction arrow (rotates with compass)
+                          if (_userHeading != null)
+                            Transform.rotate(
+                              angle: (_userHeading! * math.pi / 180),
+                              child: CustomPaint(
+                                size: const Size(40, 40),
+                                painter: DirectionArrowPainter(),
+                              ),
+                            ),
+                          // Center dot (always visible)
+                          Container(
+                            width: 16,
+                            height: 16,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF4285F4),
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 3,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.3),
+                                  blurRadius: 6,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+
+          // Top UI Layer (No SafeArea, full to top)
+          Column(
+            children: [
+              _buildHeader(),
+              SafeArea(
+                top: false,
+                child: Column(
+                  children: [
+                    const SizedBox(height: 16),
+                    _buildSearchBar(),
+                    const SizedBox(height: 16),
+                    _buildFilterChips(),
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          // Bottom Card (when marker selected)
+          if (_selectedLapangan != null)
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _buildBottomCard(),
+            ),
+
+          // Compass Widget (top - below filter chips on the left)
+          Positioned(
+            left: 16,
+            top: 240, // Fixed position below filter chips
+            child: _buildCompassWidget(),
+          ),
+          
+          // My Location Button (below Compass on the left)
+          Positioned(
+            left: 16,
+            top: 300, // Below Compass button (240 + 48 + 12)
+            child: _buildMyLocationButton(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 12,
+        bottom: 12,
+        left: 16,
+        right: 16,
+      ),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF4F1EC),
+        border: Border(
+          bottom: BorderSide(color: Color(0xFFE5E2DC), width: 1),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEEEEEA),
+              borderRadius: BorderRadius.circular(9999),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(9999),
+              child: Image.asset(
+                'assets/logo.png',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Icon(
+                    Icons.sports_soccer,
+                    color: Color(0xFF6B8F71),
+                    size: 24,
+                  );
+                },
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Explore',
+            style: TextStyle(
+              color: Color(0xFF6B8F71),
+              fontSize: 20,
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFC2C8BF)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: TextField(
+          controller: _searchController,
+          onChanged: _searchLapangan,
+          decoration: InputDecoration(
+            hintText: 'Search venue...',
+            hintStyle: const TextStyle(
+              color: Color(0xFFA8A29E),
+              fontSize: 16,
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w400,
+            ),
+            prefixIcon: const Icon(
+              Icons.search_rounded,
+              color: Color(0xFFA8A29E),
+            ),
+            suffixIcon: _searchController.text.isNotEmpty
+                ? IconButton(
+                    icon: const Icon(Icons.clear, color: Color(0xFFA8A29E)),
+                    onPressed: () {
+                      _searchController.clear();
+                      _searchLapangan('');
+                    },
+                  )
+                : const Icon(
+                    Icons.tune_rounded,
+                    color: Color(0xFFA8A29E),
+                  ),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChips() {
+    final filters = ['All', 'FUTSAL', 'BADMINTON', 'TENNIS', 'BASKETBALL', 'MINI_SOCCER'];
+    final displayNames = {
+      'All': 'All',
+      'FUTSAL': 'Futsal',
+      'BADMINTON': 'Badminton',
+      'TENNIS': 'Tennis',
+      'BASKETBALL': 'Basketball',
+      'MINI_SOCCER': 'Mini Soccer',
+    };
+
+    return SizedBox(
+      height: 50,
+      child: ListView.separated(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        scrollDirection: Axis.horizontal,
+        itemCount: filters.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final filter = filters[index];
+          final isSelected = _selectedFilter == filter;
+          return GestureDetector(
+            onTap: () => _filterByJenis(filter),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 9),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF416448) : Colors.white,
+                borderRadius: BorderRadius.circular(9999),
+                border: Border.all(
+                  color: isSelected ? const Color(0xFF416448) : const Color(0xFFC2C8BF),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0C000000),
+                    blurRadius: 2,
+                    offset: Offset(0, 1),
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Text(
+                  displayNames[filter] ?? filter,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : const Color(0xFF5F5E5B),
+                    fontSize: 16,
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  IconData _getIconForJenis(String jenis) {
+    switch (jenis.toUpperCase()) {
+      case 'FUTSAL':
+        return Icons.sports_soccer;
+      case 'BADMINTON':
+        return Icons.sports_tennis; // Changed to tennis icon
+      case 'TENNIS':
+        return Icons.sports_baseball; // Changed to baseball icon
+      case 'BASKETBALL':
+        return Icons.sports_basketball;
+      case 'MINI_SOCCER':
+        return Icons.sports_soccer;
+      default:
+        return Icons.sports;
+    }
+  }
+
+  Widget _buildMarker(LapanganModel lapangan, bool isSelected) {
+    final icon = _getIconForJenis(lapangan.jenis);
+    
+    if (isSelected) {
+      // Selected marker with price badge
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Price badge
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF8C42),
+              borderRadius: BorderRadius.circular(9999),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 4),
+                  spreadRadius: -4,
+                ),
+              ],
+            ),
+            child: Text(
+              'Rp ${(lapangan.harga / 1000).toStringAsFixed(0)}k',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 10,
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          // Marker circle
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF8C42),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 4),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x3F000000),
+                  blurRadius: 50,
+                  offset: Offset(0, 25),
+                  spreadRadius: -12,
+                ),
+              ],
+            ),
+            child: Icon(
+              icon,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Normal marker
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFF597D60), width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 4),
+                  spreadRadius: -4,
+                ),
+              ],
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF597D60),
+              size: 20,
+            ),
+          ),
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: const BoxDecoration(
+              color: Color(0xFF597D60),
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
+      );
+    }
+  }
+
+  Widget _buildBottomCard() {
+    final lapangan = _selectedLapangan!;
+    
+    return GestureDetector(
+      onTap: _navigateToDetail,
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFC2C8BF)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x3F000000),
+              blurRadius: 50,
+              offset: Offset(0, 25),
+              spreadRadius: -12,
+            ),
+          ],
+        ),
+        child: Stack(
+          children: [
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Image - ClipRRect for better rendering
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          width: 104,
+                          height: 104,
+                          color: const Color(0xFFF5F5F5),
+                          child: lapangan.image != null && lapangan.image!.isNotEmpty
+                              ? Image.network(
+                                  lapangan.image!,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.image_not_supported_rounded,
+                                      color: Color(0xFFCCC),
+                                      size: 40,
+                                    );
+                                  },
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return const Center(
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Color(0xFF6B8F71),
+                                      ),
+                                    );
+                                  },
+                                )
+                              : const Icon(
+                                  Icons.image_not_supported_rounded,
+                                  color: Color(0xFFCCC),
+                                  size: 40,
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // Content
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(right: 28), // Space for X button
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              // Title
+                              Text(
+                                lapangan.namaLapangan,
+                                style: const TextStyle(
+                                  color: Color(0xFF1A1C1A),
+                                  fontSize: 14,
+                                  fontFamily: 'Lexend',
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              // Rating
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0x196B8F71),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(
+                                      Icons.star_rounded,
+                                      color: Color(0xFF6B8F71),
+                                      size: 12,
+                                    ),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      _selectedRating > 0 
+                                          ? '${_selectedRating.toStringAsFixed(1)} (${_selectedReviewCount})'
+                                          : '0.0 (0)',
+                                      style: const TextStyle(
+                                        color: Color(0xFF6B8F71),
+                                        fontSize: 11,
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              // Location
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.location_on_rounded,
+                                    color: Color(0xFF5F5E5B),
+                                    size: 12,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      lapangan.address ?? 'No address',
+                                      style: const TextStyle(
+                                        color: Color(0xFF5F5E5B),
+                                        fontSize: 11,
+                                        fontFamily: 'Lexend',
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              // Price
+                              Text(
+                                'Rp ${(lapangan.harga / 1000).toStringAsFixed(0)}k',
+                                style: const TextStyle(
+                                  color: Color(0xFFFF8C42),
+                                  fontSize: 16,
+                                  fontFamily: 'Lexend',
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Route info (distance and duration)
+                if (_showRoute && _routeDistance > 0)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE3F2FD),
+                      border: Border(
+                        top: BorderSide(color: Colors.grey.shade200),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.route_rounded,
+                          size: 14,
+                          color: Color(0xFF4285F4),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${(_routeDistance / 1000).toStringAsFixed(1)} km • '
+                          '${(_routeDuration / 60).toStringAsFixed(0)} menit',
+                          style: const TextStyle(
+                            color: Color(0xFF4285F4),
+                            fontSize: 12,
+                            fontFamily: 'Lexend',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                // Buttons Row
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      // Route Button
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            if (_showRoute) {
+                              _clearRoute();
+                            } else {
+                              if (lapangan.lat != null && lapangan.lng != null) {
+                                _fetchRoute(LatLng(lapangan.lat!, lapangan.lng!));
+                              }
+                            }
+                          },
+                          child: Container(
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: _showRoute 
+                                  ? const Color(0xFFFF8C42)
+                                  : const Color(0xFF4285F4),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: _isLoadingRoute
+                                ? const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _showRoute 
+                                            ? Icons.close_rounded
+                                            : Icons.directions_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _showRoute ? 'Tutup' : 'Rute',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontFamily: 'Lexend',
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Book Button
+                      Expanded(
+                        child: Container(
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6B8F71),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              'Book',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontFamily: 'Lexend',
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            // Close button
+            Positioned(
+              top: 8,
+              right: 8,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedLapangan = null;
+                    _clearRoute();
+                  });
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEEEEEA),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close_rounded,
+                    size: 16,
+                    color: Color(0xFF5F5E5B),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMyLocationButton() {
+    return GestureDetector(
+      onTap: _moveToUserLocation,
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: _userLocation != null ? Colors.white : Colors.grey.shade200,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: _userLocation != null 
+                ? const Color(0xFF6B8F71) 
+                : const Color(0xFFC2C8BF),
+            width: _userLocation != null ? 2 : 1,
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x19000000),
+              blurRadius: 6,
+              offset: Offset(0, 4),
+              spreadRadius: -4,
+            ),
+            BoxShadow(
+              color: Color(0x19000000),
+              blurRadius: 15,
+              offset: Offset(0, 10),
+              spreadRadius: -3,
+            ),
+          ],
+        ),
+        child: _isLoadingLocation
+            ? const SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF6B8F71),
+                ),
+              )
+            : Icon(
+                _userLocation != null 
+                    ? Icons.my_location_rounded 
+                    : Icons.location_searching_rounded,
+                color: _userLocation != null 
+                    ? const Color(0xFF6B8F71) 
+                    : Colors.grey,
+                size: 24,
+              ),
+      ),
+    );
+  }
+  
+  Widget _buildCompassWidget() {
+    // Always show compass (it shows map orientation, not device heading)
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: const Color(0xFF6B8F71),
+          width: 2,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x19000000),
+            blurRadius: 6,
+            offset: Offset(0, 4),
+            spreadRadius: -4,
+          ),
+          BoxShadow(
+            color: Color(0x19000000),
+            blurRadius: 15,
+            offset: Offset(0, 10),
+            spreadRadius: -3,
+          ),
+        ],
+      ),
+      child: Transform.rotate(
+        // Rotate compass same direction as map rotation
+        angle: (_mapRotation * math.pi / 180),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Compass needle (red for North, white for South)
+            CustomPaint(
+              size: const Size(32, 32),
+              painter: CompassNeedlePainter(),
+            ),
+            // North indicator (N)
+            Positioned(
+              top: 4,
+              child: Text(
+                'N',
+                style: TextStyle(
+                  color: Colors.red.shade700,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Custom painter for compass needle
+class CompassNeedlePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..style = PaintingStyle.fill;
+    
+    final center = Offset(size.width / 2, size.height / 2);
+    final needleLength = size.width / 2 - 4;
+    
+    // North needle (red)
+    paint.color = Colors.red.shade700;
+    final northPath = ui.Path();
+    northPath.moveTo(center.dx, center.dy - needleLength);
+    northPath.lineTo(center.dx - 3, center.dy);
+    northPath.lineTo(center.dx + 3, center.dy);
+    northPath.close();
+    canvas.drawPath(northPath, paint);
+    
+    // South needle (white with grey border)
+    paint.color = Colors.white;
+    final southPath = ui.Path();
+    southPath.moveTo(center.dx, center.dy + needleLength);
+    southPath.lineTo(center.dx - 3, center.dy);
+    southPath.lineTo(center.dx + 3, center.dy);
+    southPath.close();
+    canvas.drawPath(southPath, paint);
+    
+    // Border for south needle
+    paint.color = Colors.grey.shade400;
+    paint.style = PaintingStyle.stroke;
+    paint.strokeWidth = 1;
+    canvas.drawPath(southPath, paint);
+    
+    // Center dot
+    paint.style = PaintingStyle.fill;
+    paint.color = Colors.grey.shade700;
+    canvas.drawCircle(center, 2, paint);
+  }
+  
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+

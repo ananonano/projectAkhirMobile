@@ -13,6 +13,7 @@ import 'login_screen.dart';
 import 'dodge_ball_screen.dart';
 import 'edit_profile_screen.dart';
 import 'time_converter_screen.dart';
+import 'root.dart'; // Import untuk profileStatsRefreshNotifier
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,6 +28,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isBiometricEnabled = false;
   String? _imagePath; // State buat nyimpen path gambar
   UserModel? _currentUser;
+  
+  // Dynamic stats
+  int _totalBookings = 0;
+  String _favoriteHobby = '-';
+  int _highScore = 0;
+  
+  // Helper method untuk get icon berdasarkan jenis olahraga
+  String _getHobbyIcon(String hobby) {
+    switch (hobby.toLowerCase()) {
+      case 'futsal':
+        return '⚽';
+      case 'mini soccer':
+      case 'mini_soccer':
+      case 'minsoc':
+        return '⚽';
+      case 'badminton':
+        return '🏸';
+      case 'basket':
+      case 'basketball':
+        return '🏀';
+      case 'tennis':
+        return '🎾';
+      case 'voli':
+      case 'volleyball':
+        return '🏐';
+      default:
+        return '🏃'; // Default icon untuk olahraga umum
+    }
+  }
+  
+  // Helper method untuk format display name hobi
+  String _formatHobbyName(String hobby) {
+    if (hobby == '-') return '-';
+    
+    switch (hobby.toLowerCase()) {
+      case 'mini soccer':
+      case 'mini_soccer':
+        return 'Minsoc';
+      case 'futsal':
+        return 'Futsal';
+      case 'badminton':
+        return 'Badminton';
+      case 'basket':
+      case 'basketball':
+        return 'Basket';
+      case 'tennis':
+        return 'Tennis';
+      case 'voli':
+      case 'volleyball':
+        return 'Voli';
+      default:
+        return hobby; // Return as-is jika tidak ada mapping
+    }
+  }
 
   final AuthController _authController = AuthController();
   final TimeController _timeController = TimeController();
@@ -43,10 +98,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     _loadUserData();
     _checkBiometricStatus();
+    _loadUserStats(); // Load dynamic stats
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (mounted) setState(() => _currentTime = DateTime.now());
     });
+    
+    // Listen to profile stats refresh notifier
+    profileStatsRefreshNotifier.addListener(_onStatsRefreshTriggered);
+  }
+  
+  void _onStatsRefreshTriggered() {
+    print('[ProfileScreen] Stats refresh triggered by notifier');
+    _loadUserStats();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh biometric status setiap kali screen muncul
+    _checkBiometricStatus();
+    // Refresh stats setiap kali screen muncul
+    _loadUserStats();
   }
 
 
@@ -54,6 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _timer.cancel();
+    profileStatsRefreshNotifier.removeListener(_onStatsRefreshTriggered);
     super.dispose();
   }
 
@@ -68,8 +142,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _username = username ?? "User";
       _role = prefs.getString('role') ?? "user";
-      // Load foto profil berdasarkan username spesifik (bukan global)
-      _imagePath = prefs.getString('profile_image_$_username');
     });
 
     // Load user dari database
@@ -83,14 +155,90 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
 
         if (result.isNotEmpty) {
+          final userData = UserModel.fromMap(result.first);
           setState(() {
-            _currentUser = UserModel.fromMap(result.first);
+            _currentUser = userData;
+            // Load foto dari database, fallback ke SharedPreferences
+            _imagePath = userData.image ?? prefs.getString('profile_image_$_username');
           });
           print('[ProfileScreen] User loaded from database: ${_currentUser?.name}');
+          print('[ProfileScreen] Profile image path: $_imagePath');
+          
+          // Sync ke SharedPreferences jika ada di database
+          if (userData.image != null && userData.image!.isNotEmpty) {
+            await prefs.setString('profile_image_$_username', userData.image!);
+          }
         }
       } catch (e) {
         print('[ProfileScreen] Error loading user from database: $e');
       }
+    }
+  }
+
+  // Load dynamic user stats
+  Future<void> _loadUserStats() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id');
+      final username = prefs.getString('username') ?? 'guest';
+      
+      print('[ProfileScreen] Loading stats for userId: $userId, username: $username');
+      
+      if (userId == null) {
+        print('[ProfileScreen] User ID not found in SharedPreferences');
+        return;
+      }
+
+      final db = await _dbHelper.database;
+
+      // 1. Hitung total bookings user
+      final bookingResult = await db.rawQuery(
+        'SELECT COUNT(*) as total FROM bookings WHERE user_id = ?',
+        [userId],
+      );
+      final totalBookings = (bookingResult.first['total'] as int?) ?? 0;
+      print('[ProfileScreen] Total bookings: $totalBookings');
+
+      // 2. Cari jenis lapangan yang paling sering di-booking (hobi)
+      // Cek dulu apakah ada bookings
+      String favoriteHobby = '-';
+      if (totalBookings > 0) {
+        final hobbyResult = await db.rawQuery('''
+          SELECT l.jenis, COUNT(*) as count
+          FROM bookings b
+          JOIN lapangans l ON b.lapangan_id = l.id
+          WHERE b.user_id = ?
+          GROUP BY l.jenis
+          ORDER BY count DESC
+          LIMIT 1
+        ''', [userId]);
+        
+        print('[ProfileScreen] Hobby query result: $hobbyResult');
+        
+        if (hobbyResult.isNotEmpty) {
+          final jenis = hobbyResult.first['jenis'] as String?;
+          favoriteHobby = jenis ?? '-';
+          print('[ProfileScreen] Favorite hobby: $favoriteHobby');
+        }
+      }
+
+      // 3. Ambil highscore tertinggi dari game dodge ball (dari SharedPreferences)
+      final highScore = prefs.getInt('dodgeball_highscore_$username') ?? 0;
+      print('[ProfileScreen] Highscore for $username: $highScore');
+
+      // Update state
+      if (mounted) {
+        setState(() {
+          _totalBookings = totalBookings;
+          _favoriteHobby = favoriteHobby;
+          _highScore = highScore;
+        });
+      }
+
+      print('[ProfileScreen] Stats updated - Bookings: $_totalBookings, Hobi: $_favoriteHobby, Highscore: $_highScore');
+    } catch (e) {
+      print('[ProfileScreen] Error loading user stats: $e');
+      print('[ProfileScreen] Stack trace: ${StackTrace.current}');
     }
   }
 
@@ -144,8 +292,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 
   Future<void> _checkBiometricStatus() async {
+    // Pastikan username sudah di-load terlebih dahulu
+    if (_username == "User") {
+      final prefs = await SharedPreferences.getInstance();
+      final username = prefs.getString('username');
+      if (username != null) {
+        setState(() => _username = username);
+      }
+    }
+    
     final isEnabled = await _authController.isBiometricEnabled(_username);
-    setState(() => _isBiometricEnabled = isEnabled);
+    if (mounted) {
+      setState(() => _isBiometricEnabled = isEnabled);
+    }
+    print('[ProfileScreen] Biometric status checked for $_username: $isEnabled');
   }
 
   Future<void> _setupBiometric() async {
@@ -203,7 +363,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (authenticated) {
         await _authController.saveBiometricOwner(_username, _role);
-        setState(() => _isBiometricEnabled = true);
+        // Refresh status biometrik setelah berhasil setup
+        await _checkBiometricStatus();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -227,7 +388,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     await prefs.remove('biometric_enabled');
     await prefs.remove('biometric_username');
     await prefs.remove('biometric_role');
-    setState(() => _isBiometricEnabled = false);
+    // Refresh status biometrik setelah reset
+    await _checkBiometricStatus();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -453,15 +615,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Row(
                 children: [
                   Expanded(
-                    child: _buildStatsCard('👕', '12', 'Booking'),
+                    child: _buildStatsCard('🧾', _totalBookings.toString(), 'Booking'),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatsCard('🎮', '8', 'Hobi'),
+                    child: _buildStatsCard(
+                      _getHobbyIcon(_favoriteHobby), 
+                      _formatHobbyName(_favoriteHobby), 
+                      'Hobi'
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildStatsCard('⭐', '450', 'Poin'),
+                    child: _buildStatsCard('🏆', _highScore.toString(), 'Poin'),
                   ),
                 ],
               ),
@@ -702,14 +868,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Icons.sports_esports_rounded,
                       'Main Dodge Ball',
                       'Mainkan game',
-                      () {
-                        Navigator.push(
+                      () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 const DodgeBallScreen(),
                           ),
                         );
+                        // Refresh stats setelah kembali dari game
+                        _loadUserStats();
                       },
                     ),
                   ],
@@ -767,7 +935,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildStatsCard(String emoji, String value, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: ShapeDecoration(
         color: Colors.white,
         shape: RoundedRectangleBorder(
@@ -787,13 +955,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: const TextStyle(fontSize: 24),
           ),
           const SizedBox(height: 8),
-          Text(
-            value,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              value,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: 4),
@@ -802,7 +975,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],

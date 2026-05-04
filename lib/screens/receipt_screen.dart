@@ -1,12 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../services/notification_service.dart';
+import '../widgets/timezone_display_widget.dart';
 import '../theme/app_theme.dart';
 
 class ReceiptScreen extends StatefulWidget {
+  final int? bookingId;
   final String namaLapangan;
   final String tanggal;
   final String jam;
@@ -15,9 +19,12 @@ class ReceiptScreen extends StatefulWidget {
   final String metodeBayar;
   final bool isFromHistory;
   final String? status;
+  final DateTime? bookingDateTime; // Add booking datetime for timezone display (legacy)
+  final List<DateTime>? bookingDateTimes; // Multiple booking times
 
   const ReceiptScreen({
     super.key,
+    this.bookingId,
     required this.namaLapangan,
     required this.tanggal,
     required this.jam,
@@ -26,6 +33,8 @@ class ReceiptScreen extends StatefulWidget {
     required this.metodeBayar,
     this.isFromHistory = false,
     this.status = 'completed',
+    this.bookingDateTime,
+    this.bookingDateTimes,
   });
 
   @override
@@ -71,43 +80,371 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
   }
 
   Future<void> _cetakPDF() async {
+    final bookingCode = widget.bookingId != null 
+        ? 'BKG${widget.bookingId.toString().padLeft(5, '0')}' 
+        : 'BKG00000';
+    
     final pdf = pw.Document();
+    
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
         build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text("LAPANG.IN - INVOICE BUKTI BOOKING", style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 20),
-              pw.Text("Detail Pesanan:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 10),
-              pw.Text("Lapangan: ${widget.namaLapangan}", style: const pw.TextStyle(fontSize: 14)),
-              pw.Text("Tanggal: ${widget.tanggal}", style: const pw.TextStyle(fontSize: 14)),
-              pw.Text("Jam: ${widget.jam}", style: const pw.TextStyle(fontSize: 14)),
-              pw.SizedBox(height: 20),
-              pw.Text("Pembayaran:", style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-              pw.SizedBox(height: 10),
-              pw.Text("Metode: ${widget.metodeBayar}", style: const pw.TextStyle(fontSize: 14)),
-              pw.Text("Total Lunas: ${widget.mataUang} ${widget.totalDibayar.toStringAsFixed(2)}", style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold, color: PdfColors.green)),
-              pw.SizedBox(height: 40),
-              pw.Text("Terima kasih telah menggunakan Lapang.in!", style: const pw.TextStyle(fontSize: 12, color: PdfColors.grey)),
-            ],
+          return pw.Container(
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300, width: 2),
+              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(12)),
+            ),
+            padding: const pw.EdgeInsets.all(24),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                // Header
+                pw.Container(
+                  padding: const pw.EdgeInsets.only(bottom: 16),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      bottom: pw.BorderSide(color: PdfColors.grey300, width: 2),
+                    ),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Row(
+                        mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                        children: [
+                          pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Text(
+                                'LAPANG.IN',
+                                style: pw.TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: pw.FontWeight.bold,
+                                  color: PdfColors.green900,
+                                ),
+                              ),
+                              pw.SizedBox(height: 4),
+                              pw.Text(
+                                'Booking Confirmation',
+                                style: pw.TextStyle(
+                                  fontSize: 14,
+                                  color: PdfColors.grey700,
+                                ),
+                              ),
+                            ],
+                          ),
+                          pw.Container(
+                            padding: const pw.EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
+                            decoration: pw.BoxDecoration(
+                              color: PdfColors.green100,
+                              borderRadius: const pw.BorderRadius.all(
+                                pw.Radius.circular(8),
+                              ),
+                            ),
+                            child: pw.Text(
+                              bookingCode,
+                              style: pw.TextStyle(
+                                fontSize: 18,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.green900,
+                                letterSpacing: 1.5,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                
+                pw.SizedBox(height: 24),
+                
+                // Status Badge
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: pw.BoxDecoration(
+                    color: widget.status == 'cancelled' 
+                        ? PdfColors.red100 
+                        : PdfColors.green100,
+                    borderRadius: const pw.BorderRadius.all(
+                      pw.Radius.circular(20),
+                    ),
+                  ),
+                  child: pw.Text(
+                    widget.status == 'cancelled' ? 'CANCELLED' : 'CONFIRMED',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: widget.status == 'cancelled' 
+                          ? PdfColors.red900 
+                          : PdfColors.green900,
+                    ),
+                  ),
+                ),
+                
+                pw.SizedBox(height: 24),
+                
+                // Venue Details
+                pw.Text(
+                  'Venue Details',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey900,
+                  ),
+                ),
+                pw.SizedBox(height: 12),
+                pw.Container(
+                  padding: const pw.EdgeInsets.all(16),
+                  decoration: pw.BoxDecoration(
+                    color: PdfColors.grey100,
+                    borderRadius: const pw.BorderRadius.all(
+                      pw.Radius.circular(8),
+                    ),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        widget.namaLapangan,
+                        style: pw.TextStyle(
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey900,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                pw.SizedBox(height: 20),
+                
+                // Booking Information
+                pw.Text(
+                  'Booking Information',
+                  style: pw.TextStyle(
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.grey900,
+                  ),
+                ),
+                pw.SizedBox(height: 12),
+                
+                // Date
+                _buildPdfRow('Date', widget.tanggal),
+                pw.SizedBox(height: 8),
+                
+                // Time (vertical list)
+                pw.Row(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Time',
+                      style: const pw.TextStyle(
+                        fontSize: 12,
+                        color: PdfColors.grey700,
+                      ),
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: _buildTimesList(widget.jam),
+                    ),
+                  ],
+                ),
+                pw.SizedBox(height: 8),
+                
+                // Payment Method
+                _buildPdfRow('Payment Method', widget.metodeBayar),
+                
+                pw.SizedBox(height: 24),
+                
+                // Divider
+                pw.Container(
+                  height: 1,
+                  color: PdfColors.grey300,
+                ),
+                
+                pw.SizedBox(height: 16),
+                
+                // Total Amount
+                pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  children: [
+                    pw.Text(
+                      'Total Amount',
+                      style: pw.TextStyle(
+                        fontSize: 16,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.grey900,
+                      ),
+                    ),
+                    pw.Text(
+                      '${widget.mataUang} ${widget.totalDibayar.toStringAsFixed(2)}',
+                      style: pw.TextStyle(
+                        fontSize: 22,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.green900,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                pw.SizedBox(height: 24),
+                
+                // Footer
+                pw.Container(
+                  padding: const pw.EdgeInsets.only(top: 16),
+                  decoration: const pw.BoxDecoration(
+                    border: pw.Border(
+                      top: pw.BorderSide(color: PdfColors.grey300, width: 1),
+                    ),
+                  ),
+                  child: pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Thank you for booking with Lapang.in!',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.grey700,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Please show this confirmation at the venue.',
+                        style: const pw.TextStyle(
+                          fontSize: 10,
+                          color: PdfColors.grey600,
+                        ),
+                      ),
+                      pw.SizedBox(height: 8),
+                      pw.Text(
+                        'Generated on: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
+                        style: const pw.TextStyle(
+                          fontSize: 9,
+                          color: PdfColors.grey500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
     );
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'Struk_Lapangin_${widget.namaLapangan.replaceAll(' ', '_')}.pdf',
+    
+    // Save PDF to device storage
+    try {
+      final output = await getTemporaryDirectory();
+      final file = File('${output.path}/Struk_Lapangin_${bookingCode}_${widget.namaLapangan.replaceAll(' ', '_')}.pdf');
+      await file.writeAsBytes(await pdf.save());
+      
+      // Share/Save the PDF
+      await Printing.sharePdf(
+        bytes: await pdf.save(),
+        filename: 'Struk_Lapangin_${bookingCode}_${widget.namaLapangan.replaceAll(' ', '_')}.pdf',
+      );
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('PDF berhasil didownload!', style: TextStyle(fontWeight: FontWeight.w600)),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e', style: const TextStyle(fontWeight: FontWeight.w600)),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  }
+  
+  pw.Widget _buildPdfRow(String label, String value) {
+    return pw.Row(
+      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+      children: [
+        pw.Text(
+          label,
+          style: const pw.TextStyle(
+            fontSize: 12,
+            color: PdfColors.grey700,
+          ),
+        ),
+        pw.Text(
+          value,
+          style: pw.TextStyle(
+            fontSize: 12,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.grey900,
+          ),
+        ),
+      ],
     );
+  }
+  
+  List<pw.Widget> _buildTimesList(String jam) {
+    // Split times by comma
+    final times = jam.split(',').map((e) => e.trim()).toList();
+    
+    List<pw.Widget> widgets = [];
+    
+    // Group times into rows of 4
+    for (int i = 0; i < times.length; i += 4) {
+      final endIndex = (i + 4 < times.length) ? i + 4 : times.length;
+      final rowTimes = times.sublist(i, endIndex);
+      
+      widgets.add(
+        pw.Text(
+          rowTimes.join(', '),
+          style: pw.TextStyle(
+            fontSize: 12,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.grey900,
+          ),
+          textAlign: pw.TextAlign.right,
+        ),
+      );
+      
+      // Add spacing between rows (except last one)
+      if (endIndex < times.length) {
+        widgets.add(pw.SizedBox(height: 4));
+      }
+    }
+    
+    return widgets;
   }
 
   @override
   Widget build(BuildContext context) {
     final fmt = NumberFormat.currency(locale: 'id', symbol: '${widget.mataUang} ', decimalDigits: 2);
     final isCancelled = widget.status == 'cancelled';
+    final bookingCode = widget.bookingId != null 
+        ? 'BKG${widget.bookingId.toString().padLeft(5, '0')}' 
+        : 'BKG00000';
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -185,6 +522,36 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       children: [
+                        // Booking Code
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.confirmation_number_rounded, size: 16, color: AppColors.textSecondary),
+                                SizedBox(width: 8),
+                                Text('Kode Booking', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                bookingCode,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: AppColors.primary,
+                                  letterSpacing: 1,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const Divider(height: 20),
                         _receiptRow(Icons.calendar_today_rounded, 'Tanggal', widget.tanggal),
                         const Divider(height: 20),
                         _receiptRow(Icons.access_time_rounded, 'Jam', widget.jam),
@@ -214,6 +581,20 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
               ),
             ),
 
+            const SizedBox(height: 20),
+
+            // Timezone Display - Show booking time in multiple timezones
+            if (widget.bookingDateTimes != null && widget.bookingDateTimes!.isNotEmpty)
+              TimezoneDisplayWidget(
+                wibDateTimes: widget.bookingDateTimes,
+                compact: false,
+              )
+            else if (widget.bookingDateTime != null)
+              TimezoneDisplayWidget(
+                wibDateTime: widget.bookingDateTime,
+                compact: false,
+              ),
+
             const SizedBox(height: 28),
 
             // PDF Button
@@ -237,7 +618,15 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
               width: double.infinity,
               height: 52,
               child: OutlinedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  if (widget.isFromHistory) {
+                    // From history: just pop back
+                    Navigator.pop(context);
+                  } else {
+                    // From payment: go to home and clear stack
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  }
+                },
                 style: OutlinedButton.styleFrom(
                   side: const BorderSide(color: AppColors.border, width: 1.5),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),

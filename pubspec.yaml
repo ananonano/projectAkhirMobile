@@ -52,6 +52,7 @@ dependencies:
 
   #Sensor
   sensors_plus: ^7.0.0
+  flutter_compass: ^0.8.0
 
   #AI & LLM
   google_generative_ai: ^0.4.7

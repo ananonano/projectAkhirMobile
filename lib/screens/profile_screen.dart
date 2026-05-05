@@ -12,6 +12,7 @@ import '../widgets/user_vouchers_widget.dart';
 import 'login_screen.dart';
 import 'dodge_ball_screen.dart';
 import 'edit_profile_screen.dart';
+import 'about_us_screen.dart';
 import 'root.dart'; // Import untuk profileStatsRefreshNotifier
 
 class ProfileScreen extends StatefulWidget {
@@ -1328,6 +1329,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         );
                         // Refresh stats setelah kembali dari game
                         _loadUserStats();
+                      },
+                    ),
+                    _buildSettingDivider(),
+                    _buildSettingItem(
+                      Icons.info_rounded,
+                      'About Us',
+                      'Tentang aplikasi & tim',
+                      () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AboutUsScreen(),
+                          ),
+                        );
                       },
                     ),
                   ],

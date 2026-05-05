@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -368,15 +369,24 @@ class _ReceiptScreenState extends State<ReceiptScreen> with SingleTickerProvider
     
     // Save PDF to device storage
     try {
-      final output = await getTemporaryDirectory();
-      final file = File('${output.path}/Struk_Lapangin_${bookingCode}_${widget.namaLapangan.replaceAll(' ', '_')}.pdf');
-      await file.writeAsBytes(await pdf.save());
-      
-      // Share/Save the PDF
-      await Printing.sharePdf(
-        bytes: await pdf.save(),
-        filename: 'Struk_Lapangin_${bookingCode}_${widget.namaLapangan.replaceAll(' ', '_')}.pdf',
-      );
+      if (kIsWeb) {
+        // Web: Just share/download the PDF directly
+        await Printing.sharePdf(
+          bytes: await pdf.save(),
+          filename: 'Struk_Lapangin_${bookingCode}_${widget.namaLapangan.replaceAll(' ', '_')}.pdf',
+        );
+      } else {
+        // Mobile/Desktop: Save to file system first
+        final output = await getTemporaryDirectory();
+        final file = File('${output.path}/Struk_Lapangin_${bookingCode}_${widget.namaLapangan.replaceAll(' ', '_')}.pdf');
+        await file.writeAsBytes(await pdf.save());
+        
+        // Share/Save the PDF
+        await Printing.sharePdf(
+          bytes: await pdf.save(),
+          filename: 'Struk_Lapangin_${bookingCode}_${widget.namaLapangan.replaceAll(' ', '_')}.pdf',
+        );
+      }
       
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

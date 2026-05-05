@@ -36,8 +36,10 @@ dependencies:
 
   #database
   sqflite: ^2.3.0
+  sqflite_common_ffi_web: ^0.4.5+2 # Web support for SQLite
   path_provider: ^2.1.2 # Wajib buat nyari lokasi simpen SQLite di HP
   shared_preferences: ^2.2.2 # Buat nyimpen status session login
+  universal_html: ^2.2.4 # Web support for HTML operations
 
   #biometric
   local_auth: ^2.1.7
@@ -95,6 +97,8 @@ flutter:
   assets:
     - .env
     - lapang-in.png
+    - danankmobile.jpeg
+    - gorokmobile.jpeg
   #   - images/a_dot_burr.jpeg
   #   - images/a_dot_ham.jpeg
 

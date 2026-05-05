@@ -29,8 +29,24 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>projectakhir</title>
+  <title>Lapang.in - Booking Lapangan Olahraga</title>
   <link rel="manifest" href="manifest.json">
+  
+  <!-- SQLite Web Worker -->
+  <script>
+    // Register service worker for SQLite
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('sqflite_sw.js')
+          .then(function(registration) {
+            console.log('SQLite Service Worker registered:', registration);
+          })
+          .catch(function(error) {
+            console.log('SQLite Service Worker registration failed:', error);
+          });
+      });
+    }
+  </script>
 </head>
 <body>
   <!--

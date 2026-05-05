@@ -36,7 +36,8 @@ class BookingRepository {
           b.tanggal, 
           b.jam, 
           b.total_harga, 
-          b.status, 
+          b.status,
+          b.payment_method,
           b.created_at,
           l.image as gambar,
           u.username as username

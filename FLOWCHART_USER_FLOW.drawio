@@ -1,0 +1,215 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="User Flow - Lapang.in" id="user-flow">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- START -->
+        <mxCell id="start" value="START" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="520" y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Splash Screen -->
+        <mxCell id="splash" value="Splash Screen" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="500" y="140" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="start" target="splash">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Check Auto Login -->
+        <mxCell id="checkLogin" value="Check&#xa;Auto-Login?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="510" y="240" width="140" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="splash" target="checkLogin">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Login Screen -->
+        <mxCell id="login" value="Login Screen&#xa;(Email/Username + Password&#xa;atau Biometric)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="280" y="380" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="checkLogin" target="login">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Root Screen -->
+        <mxCell id="root" value="Root Screen&#xa;(Bottom Navigation)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="500" y="500" width="160" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="checkLogin" target="root">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="login" target="root">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="370" y="530" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Register Screen -->
+        <mxCell id="register" value="Register Screen&#xa;(Username, Name, Email,&#xa;Phone, Password)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="380" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" value="Register" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="login" target="register">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="register" target="login">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="160" y="500" />
+              <mxPoint x="280" y="500" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- HOME TAB -->
+        <mxCell id="home" value="HOME TAB&#xa;- Browse Lapangan&#xa;- Filter (Sport Type, Price, Rating)&#xa;- Sort (Rating, Price, Popular)&#xa;- Search&#xa;- Recommendations" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="80" y="620" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" value="Tab 1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="root" target="home">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- MAPS TAB -->
+        <mxCell id="maps" value="MAPS TAB&#xa;- Explore dengan Peta&#xa;- Filter Sport Type&#xa;- Search Venue&#xa;- User Location + Compass&#xa;- Routing ke Lapangan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="320" y="620" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" value="Tab 2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="root" target="maps">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- BOOKING HISTORY TAB -->
+        <mxCell id="bookingHistory" value="BOOKING HISTORY TAB&#xa;- Upcoming Bookings&#xa;- History (Completed/Cancelled)&#xa;- Reschedule (H-2 hours)&#xa;- View Receipt&#xa;- Review Lapangan" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="560" y="620" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" value="Tab 3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="root" target="bookingHistory">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- PROFILE TAB -->
+        <mxCell id="profile" value="PROFILE TAB&#xa;- Edit Profile (Name, Email, Phone, Photo)&#xa;- Change Password&#xa;- Biometric Setup&#xa;- View Stats (Bookings, Hobi, Highscore)&#xa;- Vouchers&#xa;- Dodge Ball Game&#xa;- Logout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="800" y="620" width="240" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" value="Tab 4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="root" target="profile">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Detail Lapangan -->
+        <mxCell id="detail" value="Detail Lapangan Screen&#xa;- Info Lapangan&#xa;- Galeri Foto&#xa;- Amenities&#xa;- Reviews &amp; Rating&#xa;- Location Map" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="800" width="200" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" value="Tap Card" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="home" target="detail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" value="Tap Marker" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="maps" target="detail">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="420" y="780" />
+              <mxPoint x="180" y="780" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Booking Flow -->
+        <mxCell id="booking1" value="Pilih Tanggal" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="960" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" value="Book Now" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="detail" target="booking1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="booking2" value="Pilih Jam&#xa;(Multiple Selection)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="1050" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="booking1" target="booking2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="booking3" value="Payment Method&#xa;(QRIS, Transfer, E-Wallet)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="1150" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="booking2" target="booking3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="booking4" value="Apply Voucher&#xa;(Optional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="260" y="1150" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge17" value="Optional" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="booking3" target="booking4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="booking5" value="Confirm Booking" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="1250" width="140" height="50" as="geometry" />
+        </mxCell>
+        <mxCell id="edge18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="booking3" target="booking5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="receipt" value="Receipt Screen&#xa;- Booking ID&#xa;- QR Code&#xa;- Details&#xa;- Download/Share" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="80" y="1340" width="140" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="edge19" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="booking5" target="receipt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Chat Support -->
+        <mxCell id="chat" value="Chat Support&#xa;(Draggable FAB)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="800" y="800" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge20" value="FAB" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="root" target="chat">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="720" y="530" />
+              <mxPoint x="720" y="830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Review -->
+        <mxCell id="review" value="Review Lapangan&#xa;- Rating (1-5 stars)&#xa;- Comment&#xa;- Submit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="560" y="800" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="edge21" value="Review" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="bookingHistory" target="review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Dodge Ball Game -->
+        <mxCell id="game" value="Dodge Ball Game&#xa;- Highscore Tracking&#xa;- Leaderboard" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12" vertex="1" parent="1">
+          <mxGeometry x="800" y="900" width="160" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="edge22" value="Play Game" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="profile" target="game">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Logout -->
+        <mxCell id="logout" value="Logout" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="860" y="1020" width="100" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge23" value="Logout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="profile" target="logout">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="logout" target="login">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="1050" />
+              <mxPoint x="1080" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- END -->
+        <mxCell id="end" value="END" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="90" y="1480" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge25" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="receipt" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

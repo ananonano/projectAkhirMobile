@@ -1,0 +1,162 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Admin Flow - Lapang.in" id="admin-flow">
+    <mxGraphModel dx="1434" dy="844" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- START -->
+        <mxCell id="start" value="START" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="520" y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Login as Admin -->
+        <mxCell id="login" value="Login Screen&#xa;(Admin Credentials)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="490" y="140" width="180" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="start" target="login">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Admin Dashboard -->
+        <mxCell id="dashboard" value="ADMIN DASHBOARD&#xa;- Revenue Today&#xa;- Bookings Today&#xa;- Active Fields Count&#xa;- Recent Bookings (Top 5)&#xa;- Recent Reviews (Top 5)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;align=left" vertex="1" parent="1">
+          <mxGeometry x="460" y="260" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="login" target="dashboard">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- Drawer Menu -->
+        <mxCell id="drawer" value="ADMIN DRAWER MENU&#xa;- Dashboard&#xa;- Bookings&#xa;- Revenue&#xa;- Manajemen Lapangan&#xa;- Database&#xa;- Logout" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="800" y="260" width="200" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3" value="Hamburger Menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="dashboard" target="drawer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- BOOKINGS MANAGEMENT -->
+        <mxCell id="bookings" value="BOOKINGS MANAGEMENT&#xa;- View All Bookings&#xa;- Filter by Status&#xa;  (Pending, Confirmed, Completed, Cancelled)&#xa;- Filter by Date&#xa;- Search by User/Lapangan&#xa;- View Booking Details" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="80" y="460" width="240" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="edge4" value="Menu: Bookings" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="dashboard" target="bookings">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- REVENUE REPORTS -->
+        <mxCell id="revenue" value="REVENUE REPORTS&#xa;- Filter: Overall / Monthly / Daily&#xa;- Date Picker (Month/Day)&#xa;- Total Revenue Summary&#xa;- App Commission (10%)&#xa;- Partner Revenue (90%)&#xa;- Revenue Per Lapangan&#xa;  (Bookings count + Revenue)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="360" y="460" width="240" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="edge5" value="Menu: Revenue" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="dashboard" target="revenue">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- FIELD MANAGEMENT -->
+        <mxCell id="fieldMgmt" value="MANAJEMEN LAPANGAN&#xa;- View All Fields&#xa;- Search (Name, Type, Price, Location)&#xa;- Add New Field&#xa;- Edit Field&#xa;- Delete Field" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="640" y="460" width="240" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge6" value="Menu: Manajemen Lapangan" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="dashboard" target="fieldMgmt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- DATABASE VIEWER -->
+        <mxCell id="database" value="DATABASE VIEWER&#xa;- View All Tables&#xa;- Select Table to View&#xa;- View Table Data&#xa;- Search within Table&#xa;- Export Data (Optional)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="920" y="460" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge7" value="Menu: Database" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="dashboard" target="database">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- CREATE FIELD FLOW -->
+        <mxCell id="createField" value="CREATE FIELD SCREEN&#xa;- Input: Nama, Jenis, Harga&#xa;- Input: Alamat, Deskripsi&#xa;- Input: Jam Buka/Tutup&#xa;- Input: Koordinat (Lat/Lng)&#xa;- Upload Gambar&#xa;- Select Amenities&#xa;- Save Field" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="640" y="640" width="240" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="edge8" value="Add New" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="fieldMgmt" target="createField">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- EDIT FIELD FLOW -->
+        <mxCell id="editField" value="EDIT FIELD SCREEN&#xa;- Load Existing Data&#xa;- Edit: Nama, Jenis, Harga&#xa;- Edit: Alamat, Deskripsi&#xa;- Edit: Jam Buka/Tutup&#xa;- Edit: Koordinat&#xa;- Update Gambar&#xa;- Update Amenities&#xa;- Save Changes" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="640" y="820" width="240" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="edge9" value="Edit" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="fieldMgmt" target="editField">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- DELETE FIELD -->
+        <mxCell id="deleteField" value="DELETE FIELD&#xa;- Confirmation Dialog&#xa;- Delete from Database&#xa;- Refresh List" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="920" y="640" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="edge10" value="Delete" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="fieldMgmt" target="deleteField">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- VIEW BOOKING DETAILS -->
+        <mxCell id="bookingDetail" value="BOOKING DETAILS&#xa;- Booking ID&#xa;- User Info&#xa;- Lapangan Info&#xa;- Date &amp; Time&#xa;- Payment Method&#xa;- Total Price&#xa;- Status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="80" y="660" width="180" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="edge11" value="View Details" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="bookings" target="bookingDetail">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- VIEW REVIEWS -->
+        <mxCell id="reviews" value="REVIEWS MANAGEMENT&#xa;- View All Reviews&#xa;- Filter by Lapangan&#xa;- Sort by Rating/Date&#xa;- View Review Details&#xa;  (User, Rating, Comment, Date)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="360" y="680" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge12" value="View Reviews" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="dashboard" target="reviews">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="420" />
+              <mxPoint x="470" y="420" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- TABLE VIEWER -->
+        <mxCell id="tableViewer" value="TABLE VIEWER SCREEN&#xa;- Display Table Name&#xa;- Show Column Headers&#xa;- Display Rows (Paginated)&#xa;- Search within Table&#xa;- Refresh Data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;align=left" vertex="1" parent="1">
+          <mxGeometry x="920" y="640" width="220" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="edge13" value="Select Table" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;dashed=1" edge="1" parent="1" source="database" target="tableViewer">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- LOGOUT -->
+        <mxCell id="logout" value="LOGOUT" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="520" y="1040" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge14" value="Menu: Logout" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="dashboard" target="logout">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="580" y="420" />
+              <mxPoint x="320" y="420" />
+              <mxPoint x="320" y="1070" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Back to Login -->
+        <mxCell id="edge15" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="logout" target="login">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1080" y="1070" />
+              <mxPoint x="1080" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- END -->
+        <mxCell id="end" value="END" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="520" y="1160" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="edge16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="logout" target="end">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <!-- NOTES BOX -->
+        <mxCell id="notes" value="NOTES:&#xa;&#xa;1. Admin dapat mengakses semua fitur melalui Drawer Menu&#xa;&#xa;2. Dashboard menampilkan ringkasan real-time:&#xa;   - Revenue hari ini&#xa;   - Jumlah booking hari ini&#xa;   - Jumlah lapangan aktif&#xa;   - 5 booking terbaru&#xa;   - 5 review terbaru&#xa;&#xa;3. Semua screen memiliki:&#xa;   - Header dengan hamburger menu&#xa;   - Search/Filter functionality&#xa;   - Refresh capability&#xa;&#xa;4. Data disimpan di SQLite database lokal" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;verticalAlign=top" vertex="1" parent="1">
+          <mxGeometry x="80" y="900" width="280" height="280" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

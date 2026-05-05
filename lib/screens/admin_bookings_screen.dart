@@ -269,6 +269,61 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                         ),
                         child: GestureDetector(
                           onTap: () {
+                            // Parse transaction datetime from created_at
+                            DateTime? transactionDateTime;
+                            try {
+                              final createdAtStr = booking['created_at'] as String?;
+                              if (createdAtStr != null && createdAtStr.isNotEmpty) {
+                                transactionDateTime = DateTime.parse(createdAtStr);
+                              }
+                            } catch (e) {
+                              print('[AdminBookings] Error parsing created_at: $e');
+                            }
+                            
+                            // Parse booking date times for timezone display
+                            List<DateTime>? bookingDateTimes;
+                            try {
+                              final tanggalStr = booking['tanggal'] as String?;
+                              final jamStr = booking['jam'] as String?;
+                              
+                              if (tanggalStr != null && jamStr != null) {
+                                // Parse tanggal (format: "dd MMM yyyy")
+                                final bookingDate = DateFormat('dd MMM yyyy').parse(tanggalStr);
+                                
+                                // Parse jam (format: "08:00, 09:00, 10:00")
+                                final times = jamStr.split(',').map((e) => e.trim()).toList();
+                                
+                                bookingDateTimes = [];
+                                for (String timeStr in times) {
+                                  if (timeStr == '-' || timeStr.isEmpty) continue;
+                                  
+                                  try {
+                                    final timeParts = timeStr.split(':');
+                                    final hour = int.parse(timeParts[0]);
+                                    final minute = int.parse(timeParts[1]);
+                                    
+                                    bookingDateTimes.add(DateTime(
+                                      bookingDate.year,
+                                      bookingDate.month,
+                                      bookingDate.day,
+                                      hour,
+                                      minute,
+                                    ));
+                                  } catch (e) {
+                                    print('[AdminBookings] Error parsing time "$timeStr": $e');
+                                    continue;
+                                  }
+                                }
+                                
+                                // If no valid times parsed, use booking date
+                                if (bookingDateTimes.isEmpty) {
+                                  bookingDateTimes = [bookingDate];
+                                }
+                              }
+                            } catch (e) {
+                              print('[AdminBookings] Error parsing booking date times: $e');
+                            }
+                            
                             // Navigate to receipt screen
                             Navigator.push(
                               context,
@@ -280,9 +335,11 @@ class _AdminBookingsScreenState extends State<AdminBookingsScreen> {
                                   jam: booking['jam'] ?? '-',
                                   totalDibayar: (int.tryParse(booking['total_harga'].toString()) ?? 0).toDouble(),
                                   mataUang: 'IDR',
-                                  metodeBayar: 'QRIS',
+                                  metodeBayar: booking['payment_method'] ?? 'QRIS',
                                   isFromHistory: true,
                                   status: booking['status'] ?? 'completed',
+                                  transactionDateTime: transactionDateTime,
+                                  bookingDateTimes: bookingDateTimes,
                                 ),
                               ),
                             );

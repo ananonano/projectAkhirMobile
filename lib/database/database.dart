@@ -1,8 +1,7 @@
 import 'package:sqflite/sqflite.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import '../models/lapangan_model.dart';
+import 'database_factory.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._privateConstructor();
@@ -17,11 +16,7 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDatabase() async {
-    Directory documentsDirectory = await getApplicationDocumentsDirectory();
-    String path = join(documentsDirectory.path, 'lapangin.db');
-
-    return await openDatabase(
-      path,
+    return await PlatformDatabaseFactory.getDatabase(
       version: 10,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
@@ -180,7 +175,11 @@ class DatabaseHelper {
   }
 
   Future _onCreate(Database db, int version) async {
+    print('[DB_onCreate] Starting database creation...');
+    print('[DB_onCreate] Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
+    
     // 1. Tabel Users
+    print('[DB_onCreate] Creating users table...');
     await db.execute('''
       CREATE TABLE users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,8 +193,10 @@ class DatabaseHelper {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     ''');
+    print('[DB_onCreate] Users table created');
 
     // 2. Tabel Lapangans
+    print('[DB_onCreate] Creating lapangans table...');
     await db.execute('''
       CREATE TABLE lapangans (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,6 +214,7 @@ class DatabaseHelper {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     ''');
+    print('[DB_onCreate] Lapangans table created');
 
     // 3. Tabel Amenities
     await db.execute('''
@@ -317,9 +319,32 @@ class DatabaseHelper {
       )
     ''');
 
+    print('[DB_onCreate] All tables created successfully');
+
     // =========================================================
     // SEEDER - REAL DATA FROM GOOGLE MAPS SCRAPING
+    // Skip seeding on web platform for faster initialization
     // =========================================================
+    
+    if (kIsWeb) {
+      print('[DB_onCreate] Running on WEB - Skipping data seeding for performance');
+      print('[DB_onCreate] Creating minimal admin account only...');
+      
+      // Only create admin account for web
+      await db.insert('users', {
+        'username': 'admin',
+        'password': 'f865b53623b121fd34ee5426c792e5c33af8c227',
+        'name': 'Super Admin Lapangin',
+        'email': 'admin@lapangin.com',
+        'phone': '081234567890',
+        'role': 'admin',
+      });
+      
+      print('[DB_onCreate] Web database initialization complete!');
+      return; // Exit early for web
+    }
+
+    print('[DB_onCreate] Running on MOBILE - Loading full dataset...');
 
     // --- Insert Admin Account ---
     await db.insert('users', {

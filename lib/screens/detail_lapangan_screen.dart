@@ -29,7 +29,7 @@ class DetailLapanganScreen extends StatefulWidget {
 }
 
 class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
-  // --- STATE SLIDER GAMBAR ---
+  // State untuk slider gambar
   int _currentImageIndex = 0;
   List<String> _imagePaths = [];
   final PageController _pageController = PageController();
@@ -38,14 +38,14 @@ class _DetailLapanganScreenState extends State<DetailLapanganScreen> {
   final ReviewRepository _reviewRepository = ReviewRepository();
   final LapanganImageRepository _imageRepository = LapanganImageRepository();
 
-  // --- STATE BOOKING (JADWAL & JAM) ---
+  // State untuk booking jadwal dan jam
   DateTime _selectedDate = DateTime.now();
   List<String> _selectedTimes = [];
   late List<String> _availableTimes;
   List<String> _bookedTimes = []; // Jam yang udah dipesen orang lain
   bool _isLoadingJadwal = false;
 
-  // --- STATE REVIEWS ---
+  // State untuk reviews dan rating
   List<Review> _reviews = [];
   double _averageRating = 0.0;
   int _reviewCount = 0;

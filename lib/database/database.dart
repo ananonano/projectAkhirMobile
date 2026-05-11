@@ -321,11 +321,7 @@ class DatabaseHelper {
 
     print('[DB_onCreate] All tables created successfully');
 
-    // =========================================================
-    // SEEDER - REAL DATA FROM GOOGLE MAPS SCRAPING
-    // Skip seeding on web platform for faster initialization
-    // =========================================================
-    
+    // SEEDER - REAL DATA FROM GOOGLE MAPS SCRAPING    
     if (kIsWeb) {
       print('[DB_onCreate] Running on WEB - Skipping data seeding for performance');
       print('[DB_onCreate] Creating minimal admin account only...');
@@ -346,7 +342,7 @@ class DatabaseHelper {
 
     print('[DB_onCreate] Running on MOBILE - Loading full dataset...');
 
-    // --- Insert Admin Account ---
+    // Insert Admin Account
     await db.insert('users', {
       'username': 'admin',
       'password': 'f865b53623b121fd34ee5426c792e5c33af8c227',
@@ -356,7 +352,7 @@ class DatabaseHelper {
       'role': 'admin',
     });
 
-    // --- Insert User Accounts ---
+    // Insert User Accounts
     String userPass = '95c946bf622ef93b0a211cd0fd028dfdfcf7e39e';
     await db.insert('users', {
       'username': 'danang',
@@ -391,17 +387,15 @@ class DatabaseHelper {
       'role': 'user',
     });
 
-    // --- Insert Amenities ---
+    // Insert Amenities
     await db.insert('amenities', {'name': 'Toilet Bersih'});
     await db.insert('amenities', {'name': 'Kantin / Cafe'});
     await db.insert('amenities', {'name': 'Parkir Luas'});
     await db.insert('amenities', {'name': 'Mushola'});
 
-    // ==========================================
-    // REAL SCRAPED DATA - 101 SPORTS VENUES
-    // ==========================================
+    // Data real 101 venue olahraga
     List<Map<String, dynamic>> realVenues = [
-      // === FUTSAL FIELDS (18 venues) ===
+      // Lapangan futsal (18 venue)
       {'nama_lapangan': 'Next Futsal, Pool & Lounge', 'description': 'Lapangan futsal modern dengan fasilitas pool dan lounge area. Cocok untuk main sambil santai bersama teman.', 'image': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800', 'jenis': 'FUTSAL', 'harga': 175000, 'capacity': 10, 'address': 'Jalan Urip Sumoharjo 139, Kota Yogyakarta', 'lat': -7.783087, 'lng': 110.386795},
       {'nama_lapangan': 'Planet Futsal', 'description': 'Salah satu lapangan futsal terbaik di Jogja dengan vinyl berkualitas tinggi dan pencahayaan sempurna untuk main malam.', 'image': 'https://images.unsplash.com/photo-1589487391730-58f20eb2c308?w=800', 'jenis': 'FUTSAL', 'harga': 180000, 'capacity': 10, 'address': 'Jl. Ring Road Utara No.168, Depok, Sleman', 'lat': -7.760301, 'lng': 110.408318},
       {'nama_lapangan': 'Dolano Coffee & Futsal', 'description': 'Konsep unik futsal dengan kafe, bisa main futsal sambil ngopi. Suasana nyaman dan harga terjangkau.', 'image': 'https://www.bing.com/th?id=OLC.QCJClZlJdH6nAg480x360&pid=Local', 'jenis': 'FUTSAL', 'harga': 145000, 'capacity': 10, 'address': 'Jalan Sonopakis, Bantul', 'lat': -7.811669, 'lng': 110.336243},
@@ -421,7 +415,7 @@ class DatabaseHelper {
       {'nama_lapangan': 'Futsal Soccer Delanggu', 'description': 'Lapangan futsal di Delanggu dengan harga terjangkau. Cocok untuk latihan rutin tim futsal.', 'image': 'https://images.unsplash.com/photo-1560272564-c83b66b1ad12?w=800', 'jenis': 'FUTSAL', 'harga': 100000, 'capacity': 10, 'address': 'Jalan Delanggu Purbayan, Delanggu', 'lat': -7.624449, 'lng': 110.709091},
       {'nama_lapangan': 'Vgd Futsal', 'description': 'Lapangan futsal di Magelang dengan rumput sintetis baru. Drainase bagus dan tidak becek saat hujan.', 'image': 'https://www.bing.com/th?id=OLC.RKMFdozfttB5nw480x360&pid=Local', 'jenis': 'FUTSAL', 'harga': 130000, 'capacity': 10, 'address': 'Sawah, Sidomulyo, Salaman, Magelang', 'lat': -7.576900, 'lng': 110.146301},
 
-      // === BADMINTON COURTS (39 venues) ===
+      // BADMINTON COURTS (39 venues)
       {'nama_lapangan': 'Lapangan Badminton MOY', 'description': 'Lapangan badminton outdoor dengan net standar internasional. Cocok untuk latihan pagi atau sore.', 'image': 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800', 'jenis': 'BADMINTON', 'harga': 45000, 'capacity': 4, 'address': 'Cangkringan, Sleman', 'lat': -7.676954, 'lng': 110.464188},
       {'nama_lapangan': 'Gor Mini Badminton Sambilegi', 'description': 'GOR mini dengan 3 lapangan badminton indoor. Lantai karpet hijau dan pencahayaan terang.', 'image': 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800', 'jenis': 'BADMINTON', 'harga': 50000, 'capacity': 4, 'address': 'Jl. Teratai No.63, Depok, Sleman', 'lat': -7.776996, 'lng': 110.434090},
       {'nama_lapangan': 'GOR PHOENIX BADMINTON CENTER', 'description': 'Pusat badminton dengan 6 lapangan indoor. Sering dipakai untuk turnamen tingkat kota.', 'image': 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800', 'jenis': 'BADMINTON', 'harga': 65000, 'capacity': 4, 'address': 'Jl. Sumberan Baru No.254e, Yogyakarta', 'lat': -7.782492, 'lng': 110.348251},
@@ -461,7 +455,7 @@ class DatabaseHelper {
       {'nama_lapangan': 'Lap Badminton 06', 'description': 'Lapangan badminton nomor 06 di Tridadi. Sederhana tapi terawat dengan baik.', 'image': 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800', 'jenis': 'BADMINTON', 'harga': 38000, 'capacity': 4, 'address': 'Beran Kidul Tridadi Sleman, Yogyakarta', 'lat': -7.722509, 'lng': 110.351509},
       {'nama_lapangan': 'GOR Badminton Sabdodadi', 'description': 'GOR badminton di Sabdodadi Bantul. Lapangan luas dan pencahayaan bagus.', 'image': 'https://images.unsplash.com/photo-1626224583764-f87db24ac4ea?w=800', 'jenis': 'BADMINTON', 'harga': 42000, 'capacity': 4, 'address': 'Jalan Sadewa, Bantul', 'lat': -7.889200, 'lng': 110.354500},
 
-      // === BASKETBALL COURTS (10 venues) ===
+      // BASKETBALL COURTS (10 venues)
       {'nama_lapangan': 'UTAMA basketball - GOR victory', 'description': 'Lapangan basket indoor premium dengan lantai parket profesional. Sering dipakai untuk pertandingan resmi.', 'image': 'https://www.bing.com/th?id=OLC.O9T05X37dgf/vg480x360&pid=Local', 'jenis': 'BASKETBALL', 'harga': 180000, 'capacity': 10, 'address': 'Jl. Veteran 19-23, Yogyakarta City', 'lat': -7.804408, 'lng': 110.394829},
       {'nama_lapangan': 'UMY Basketball Court', 'description': 'Lapangan basket kampus UMY yang dibuka untuk umum. Fasilitas standar universitas dan harga mahasiswa.', 'image': 'https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800', 'jenis': 'BASKETBALL', 'harga': 120000, 'capacity': 10, 'address': 'Jalan Ringroad Barat, Sleman', 'lat': -7.750537, 'lng': 110.340988},
       {'nama_lapangan': 'ISLAMIC CENTRE Basketball Court', 'description': 'Lapangan basket di Islamic Centre Solo. Lapangan outdoor dengan ring standar NBA.', 'image': 'https://images.unsplash.com/photo-1608245449230-4ac19066d2d0?w=800', 'jenis': 'BASKETBALL', 'harga': 95000, 'capacity': 10, 'address': 'Jalan Untung Suropati 134, Surakarta', 'lat': -7.578925, 'lng': 110.837250},
@@ -473,7 +467,7 @@ class DatabaseHelper {
       {'nama_lapangan': 'Eagles Workout Basketball', 'description': 'Lapangan basket dengan program workout khusus. Cocok untuk yang ingin latihan fisik sambil main basket.', 'image': 'https://images.unsplash.com/photo-1608245449230-4ac19066d2d0?w=800', 'jenis': 'BASKETBALL', 'harga': 125000, 'capacity': 10, 'address': 'Gang Candi, Kutoarjo', 'lat': -7.716215, 'lng': 109.919739},
       {'nama_lapangan': 'Basketball Court UNDIP', 'description': 'Lapangan basket kampus UNDIP Semarang. Fasilitas universitas dengan harga terjangkau.', 'image': 'https://images.unsplash.com/photo-1519861531473-9200262188bf?w=800', 'jenis': 'BASKETBALL', 'harga': 100000, 'capacity': 10, 'address': 'Jl. Prof. Soedarto, Tembalang, Semarang', 'lat': -7.054595, 'lng': 110.431099},
 
-      // === TENNIS COURTS (18 venues) ===
+      // TENNIS COURTS (18 venues)
       {'nama_lapangan': 'Persatuan Tenis Meja Suryanaga', 'description': 'Pusat tenis meja dengan meja standar internasional. Sering dipakai untuk latihan atlet PON.', 'image': 'https://www.bing.com/th?id=OLC.5tk5MKsWw4+QWQ480x360&pid=Local', 'jenis': 'TENNIS', 'harga': 85000, 'capacity': 4, 'address': 'Jl. Suryoputran No.21, Kraton, Yogyakarta', 'lat': -7.809641, 'lng': 110.365562},
       {'nama_lapangan': 'Tennis Court at Hyatt Regency', 'description': 'Lapangan tenis hotel bintang 5 Hyatt Regency. Fasilitas mewah dengan pemandangan indah.', 'image': 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800', 'jenis': 'TENNIS', 'harga': 120000, 'capacity': 4, 'address': 'Hyatt Regency Yogyakarta, Jl. Palagan Tentara Pelajar, Sleman', 'lat': -7.727578, 'lng': 110.380234},
       {'nama_lapangan': 'Lapangan Tenis FIK UNY', 'description': 'Lapangan tenis Fakultas Ilmu Keolahragaan UNY. Hard court dengan net standar ITF.', 'image': 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800', 'jenis': 'TENNIS', 'harga': 75000, 'capacity': 4, 'address': 'Jl. Colombo No.1, Catur tunggal, Sleman', 'lat': -7.774910, 'lng': 110.386398},
@@ -493,7 +487,7 @@ class DatabaseHelper {
       {'nama_lapangan': 'Lapangan Tennis Dodiklatpur', 'description': 'Lapangan tenis milik Dodiklatpur Klaten. Fasilitas militer yang dibuka untuk umum.', 'image': 'https://images.unsplash.com/photo-1622163642998-1ea32b0bbc67?w=800', 'jenis': 'TENNIS', 'harga': 75000, 'capacity': 4, 'address': 'Jalan Kesatrian, Klaten', 'lat': -7.736800, 'lng': 110.589996},
       {'nama_lapangan': 'T Bakulan Tennis', 'description': 'Lapangan tenis di area Bakulan dekat pantai. Udara segar dan view pantai yang indah.', 'image': 'https://www.bing.com/th?id=OLC.hCXWdroC2Cz5ig480x360&pid=Local', 'jenis': 'TENNIS', 'harga': 80000, 'capacity': 4, 'address': 'Jalan Parangtritis 5, Bantul', 'lat': -7.924979, 'lng': 110.349060},
 
-      // === MINI SOCCER FIELDS (16 venues) ===
+      // MINI SOCCER FIELDS (16 venues)
       {'nama_lapangan': 'Lapangan Mini Soccer Kepuharjo', 'description': 'Lapangan mini soccer di kaki Gunung Merapi. Rumput sintetis premium dengan view pegunungan yang spektakuler.', 'image': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800', 'jenis': 'MINI_SOCCER', 'harga': 320000, 'capacity': 14, 'address': 'Cangkringan, Sleman', 'lat': -7.627169, 'lng': 110.446808},
       {'nama_lapangan': 'Adyoko Mini Soccer', 'description': 'Lapangan mini soccer dengan rumput sintetis grade A. Drainase sempurna dan tidak becek saat hujan.', 'image': 'https://images.unsplash.com/photo-1589487391730-58f20eb2c308?w=800', 'jenis': 'MINI_SOCCER', 'harga': 280000, 'capacity': 14, 'address': 'Dukuh Kumbulan, Sukoharjo', 'lat': -7.648455, 'lng': 110.861702},
       {'nama_lapangan': 'CH4 Arena Mini Soccer', 'description': 'Arena mini soccer modern dengan tribun penonton. Cocok untuk turnamen dan liga mini soccer.', 'image': 'https://images.unsplash.com/photo-1551958219-acbc608c6377?w=800', 'jenis': 'MINI_SOCCER', 'harga': 310000, 'capacity': 14, 'address': 'Jl. Dieng.Km. 05, Krasak, Wonosobo', 'lat': -7.322485, 'lng': 109.913223},
@@ -544,7 +538,7 @@ class DatabaseHelper {
     }
   }
 
-  // === CRUD METHODS ===
+  // CRUD METHODS
   
   Future<int> registerUser(Map<String, dynamic> row) async {
     Database db = await instance.database;
@@ -685,7 +679,7 @@ class DatabaseHelper {
     );
   }
 
-  // === AMENITIES METHODS ===
+  // AMENITIES METHODS
   
   Future<List<Map<String, dynamic>>> getAllAmenities() async {
     Database db = await instance.database;
@@ -720,7 +714,7 @@ class DatabaseHelper {
     }
   }
 
-  // === EMAIL & PHONE CHECK METHODS ===
+  // EMAIL & PHONE CHECK METHODS 
   
   Future<bool> checkEmailExists(String email) async {
     Database db = await instance.database;
@@ -771,7 +765,7 @@ class DatabaseHelper {
     return null;
   }
 
-  // === UNIQUE VALIDATION METHODS (for edit profile) ===
+  // UNIQUE VALIDATION METHODS (for edit profile)
   
   Future<bool> checkUsernameExistsExcept(String username, int userId) async {
     Database db = await instance.database;

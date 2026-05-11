@@ -755,7 +755,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // --- FIXED HEADER WITH TITLE AND SEARCH (NOT SCROLLABLE) ---
+            // Header dengan title dan search (fixed, tidak scroll)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
@@ -866,7 +866,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
-            // --- SCROLLABLE CONTENT (Categories + Recommendations + List) ---
+            // Konten yang bisa di-scroll (kategori, rekomendasi, dan list)
             Expanded(
               child: _isLoading
                   ? const Center(

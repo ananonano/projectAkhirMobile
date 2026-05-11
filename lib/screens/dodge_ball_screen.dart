@@ -15,7 +15,7 @@ class DodgeBallScreen extends StatefulWidget {
 }
 
 class _DodgeBallScreenState extends State<DodgeBallScreen> {
-  // --- STATE GAME ---
+  // State untuk game
   double _screenWidth = 0;
   double _screenHeight = 0;
 
@@ -39,7 +39,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
   bool _isNewBest = false;
   bool _isLoadingHighScore = true;
 
-  // --- VOUCHER SYSTEM ---
+  // Sistem voucher
   final VoucherController _voucherController = VoucherController();
   VoucherModel? _earnedVoucher;
 
@@ -67,7 +67,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     super.dispose();
   }
 
-  // --- LOAD & SAVE HIGH SCORE ---
+  // Fungsi untuk load dan save high score
   Future<void> _loadHighScore() async {
     final prefs = await SharedPreferences.getInstance();
     final username = prefs.getString('username') ?? 'guest';
@@ -95,7 +95,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     print('[DodgeBall] Triggered profile stats refresh after new highscore: $score');
   }
 
-  // --- SENSOR: AKSELEROMETER ---
+  // Setup sensor akselerometer
   void _setupAccelerometer() {
     _accelSubscription = accelerometerEventStream().listen((AccelerometerEvent event) {
       if (_isPlaying && !_isGameOver) {
@@ -108,7 +108,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     });
   }
 
-  // --- KONTROL TOUCH DRAG (FALLBACK) ---
+  // Kontrol touch drag sebagai fallback
   void _onPanUpdate(DragUpdateDetails details) {
     if (_isPlaying && !_isGameOver) {
       setState(() {
@@ -119,7 +119,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     }
   }
 
-  // --- LOGIKA GAME ---
+  // Logika utama game
   void _startGame() {
     setState(() {
       _score = 0;
@@ -254,7 +254,7 @@ class _DodgeBallScreenState extends State<DodgeBallScreen> {
     );
   }
 
-  // --- CUSTOM WIDGET BOLA ---
+  // Widget custom untuk bola
   Widget _buildBall({required Color color, required IconData iconData}) {
     return Container(
       width: _ballSize,

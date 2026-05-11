@@ -217,8 +217,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // --- LOGO ---
-                    // --- LOGO IMAGE ---
+                    // Logo aplikasi
                     Image.asset(
                       'lapang-in.png',
                       height: 60,
@@ -247,7 +246,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // --- USERNAME FIELD ---
+                    // Field username
                     _buildTextField(
                       controller: _usernameController,
                       label: 'Username',
@@ -256,7 +255,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- NAME FIELD ---
+                    // Field nama lengkap
                     _buildTextField(
                       controller: _nameController,
                       label: 'Full Name',
@@ -265,7 +264,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- PHONE FIELD ---
+                    // Field nomor telepon
                     _buildTextField(
                       controller: _phoneController,
                       label: 'Phone Number',
@@ -275,7 +274,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- EMAIL FIELD ---
+                    // Field email
                     _buildTextField(
                       controller: _emailController,
                       label: 'Email Address',
@@ -285,7 +284,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- PASSWORD FIELD ---
+                    // Field password
                     _buildTextField(
                       controller: _passwordController,
                       label: 'Password',
@@ -305,7 +304,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 20),
 
-                    // --- CONFIRM PASSWORD FIELD ---
+                    // Field konfirmasi password
                     _buildTextField(
                       controller: _confirmPasswordController,
                       label: 'Confirm Password',
@@ -325,7 +324,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // --- REGISTER BUTTON ---
+                    // Tombol register
                     SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -360,7 +359,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // --- LOGIN LINK ---
+                    // Link ke halaman login
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

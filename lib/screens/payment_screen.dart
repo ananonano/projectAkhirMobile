@@ -7,10 +7,8 @@ import '../controllers/currency_controller.dart';
 import '../controllers/voucher_controller.dart';
 import '../models/voucher_model.dart';
 import '../widgets/voucher_selector.dart';
-import '../widgets/timezone_display_widget.dart';
 import '../theme/app_theme.dart';
 import 'receipt_screen.dart';
-import 'root.dart'; // Import untuk akses notifiers
 
 class PaymentScreen extends StatefulWidget {
   final Map<String, dynamic> lapangan;
@@ -79,16 +77,23 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   Future<void> _handlePaymentWithAuth() async {
-    final username = await _authController.getSessionUsername();
-    final isBioEnabled = await _authController.isBiometricEnabled(username);
-    
+    final isBioEnabled = await _authController.isBiometricEnabled(
+      await _authController.getSessionUsername(),
+    );
     if (!isBioEnabled) {
-      // Biometrik belum aktif, gunakan password sebagai alternatif
-      _showPasswordDialog();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Aktifkan Biometrik di Profil untuk bertransaksi!', style: TextStyle(fontWeight: FontWeight.w600)),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
       return;
     }
-    
-    // Biometrik aktif, gunakan sidik jari
     try {
       final didAuthenticate = await _auth.authenticate(
         localizedReason: 'Konfirmasi pembayaran sewa lapangan dengan sidik jari',
@@ -111,270 +116,21 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     } catch (e) {
       debugPrint("Error biometric payment: $e");
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Error autentikasi biometrik', style: TextStyle(fontWeight: FontWeight.w600)),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _showPasswordDialog() async {
-    final passwordController = TextEditingController();
-    bool isPasswordVisible = false;
-    bool isLoading = false;
-
-    await showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: Row(
-            children: const [
-              Icon(Icons.lock_rounded, color: AppColors.primary, size: 28),
-              SizedBox(width: 12),
-              Text(
-                'Konfirmasi Pembayaran',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 18,
-                ),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Masukkan password akun Anda untuk melanjutkan pembayaran',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: passwordController,
-                obscureText: !isPasswordVisible,
-                autofocus: true,
-                enabled: !isLoading,
-                decoration: InputDecoration(
-                  labelText: 'Password',
-                  hintText: 'Masukkan password',
-                  prefixIcon: const Icon(Icons.lock_outline_rounded),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      isPasswordVisible
-                          ? Icons.visibility_rounded
-                          : Icons.visibility_off_rounded,
-                    ),
-                    onPressed: () {
-                      setDialogState(() {
-                        isPasswordVisible = !isPasswordVisible;
-                      });
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  filled: true,
-                  fillColor: AppColors.inputFill,
-                ),
-                onSubmitted: (_) async {
-                  if (passwordController.text.isNotEmpty && !isLoading) {
-                    await _verifyPasswordAndPay(
-                      passwordController.text,
-                      context,
-                      setDialogState,
-                      (loading) {
-                        setDialogState(() => isLoading = loading);
-                      },
-                    );
-                  }
-                },
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.info_outline_rounded,
-                    size: 16,
-                    color: AppColors.textSecondary,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Aktifkan biometrik di Profil untuk pembayaran lebih cepat',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: AppColors.textSecondary.withOpacity(0.8),
-                        height: 1.3,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: isLoading ? null : () => Navigator.pop(context),
-              child: const Text(
-                'Batal',
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: isLoading
-                  ? null
-                  : () async {
-                      if (passwordController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Password tidak boleh kosong'),
-                            backgroundColor: Colors.orange,
-                            behavior: SnackBarBehavior.floating,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            margin: const EdgeInsets.all(16),
-                          ),
-                        );
-                        return;
-                      }
-                      await _verifyPasswordAndPay(
-                        passwordController.text,
-                        context,
-                        setDialogState,
-                        (loading) {
-                          setDialogState(() => isLoading = loading);
-                        },
-                      );
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
-                ),
-              ),
-              child: isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      'Bayar',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _verifyPasswordAndPay(
-    String password,
-    BuildContext dialogContext,
-    StateSetter setDialogState,
-    Function(bool) setLoading,
-  ) async {
-    setLoading(true);
-
-    try {
-      final username = await _authController.getSessionUsername();
-      final isValid = await _authController.verifyPassword(username, password);
-
-      if (isValid) {
-        // Password benar, tutup dialog dan proses bayar
-        if (dialogContext.mounted) {
-          Navigator.pop(dialogContext);
-        }
-        await _prosesBayar();
-      } else {
-        // Password salah
-        setLoading(false);
-        if (dialogContext.mounted) {
-          ScaffoldMessenger.of(dialogContext).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Password salah! Coba lagi.',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              backgroundColor: Colors.red,
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              margin: const EdgeInsets.all(16),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      setLoading(false);
-      debugPrint('Error verifying password: $e');
-      if (dialogContext.mounted) {
-        ScaffoldMessenger.of(dialogContext).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
-      }
     }
   }
 
   Future<void> _prosesBayar() async {
     final int hargaPerJam = widget.lapangan['harga'] ?? 0;
     final userId = await _authController.getSessionUserId();
-    
-    // Debug logging
-    print('[PaymentScreen] Processing payment for userId: $userId');
-    print('[PaymentScreen] Lapangan: ${widget.lapangan['nama_lapangan']}');
-    print('[PaymentScreen] Date: ${widget.selectedDate}');
-    print('[PaymentScreen] Times: ${widget.selectedTimes}');
-    
     try {
-      final bookingId = await _bookingController.createBooking(
+      await _bookingController.createBooking(
         userId: userId,
         lapanganId: widget.lapangan['id'],
         namaLapangan: widget.lapangan['nama_lapangan'],
         tanggal: widget.selectedDate,
         selectedTimes: widget.selectedTimes,
         hargaPerJam: hargaPerJam,
-        paymentMethod: _paymentMethod,
       );
-      
-      print('[PaymentScreen] Booking created with ID: $bookingId');
       
       // Mark voucher as used if selected
       if (_selectedVoucher != null && _selectedVoucher!.id != null) {
@@ -390,82 +146,24 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final payment = _currencyController.calculatePayment(finalHargaIDR, _selectedCurrency);
       
       if (mounted) {
-        // Trigger refresh untuk booking screen, home screen, recommendations, dan profile stats
-        bookingScreenRefreshNotifier.value++;
-        homeScreenRefreshNotifier.value++;
-        recommendationsRefreshNotifier.value++;
-        profileStatsRefreshNotifier.value++;
-        
-        final transactionTime = DateTime.now(); // Capture transaction time
-        final bookingTimes = _getBookingDateTimes(); // Get booking times
-        final jamString = widget.selectedTimes.join(', ');
-        
-        // Debug logging
-        print('[PaymentScreen] ========== SENDING TO RECEIPT ==========');
-        print('[PaymentScreen] selectedDate: ${widget.selectedDate}');
-        print('[PaymentScreen] selectedTimes: ${widget.selectedTimes}');
-        print('[PaymentScreen] selectedTimes.length: ${widget.selectedTimes.length}');
-        print('[PaymentScreen] jam (joined): "$jamString"');
-        print('[PaymentScreen] jam.length: ${jamString.length}');
-        print('[PaymentScreen] jam.isEmpty: ${jamString.isEmpty}');
-        print('[PaymentScreen] bookingDateTimes: $bookingTimes');
-        print('[PaymentScreen] bookingDateTimes.length: ${bookingTimes.length}');
-        print('[PaymentScreen] transactionDateTime: $transactionTime');
-        print('[PaymentScreen] ==========================================');
-        
         Navigator.pushReplacement(context, MaterialPageRoute(
           builder: (_) => ReceiptScreen(
-            bookingId: bookingId,
             namaLapangan: widget.lapangan['nama_lapangan'],
             tanggal: DateFormat('dd MMM yyyy').format(widget.selectedDate),
-            jam: jamString,
+            jam: widget.selectedTimes.join(', '),
             totalDibayar: payment['totalConverted']!,
             mataUang: _selectedCurrency,
             metodeBayar: _paymentMethod,
-            transactionDateTime: transactionTime, // Pass transaction time
-            bookingDateTimes: bookingTimes, // Pass all booking times
           ),
         ));
       }
     } catch (e) {
-      print('[PaymentScreen] Error creating booking: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal Bayar: $e'), backgroundColor: Colors.red),
         );
       }
     }
-  }
-
-  /// Get booking DateTime for timezone conversion
-  /// Returns list of all selected times as DateTime objects
-  List<DateTime> _getBookingDateTimes() {
-    if (widget.selectedTimes.isEmpty) {
-      return [widget.selectedDate];
-    }
-    
-    List<DateTime> dateTimes = [];
-    
-    for (String timeStr in widget.selectedTimes) {
-      try {
-        final timeParts = timeStr.split(':');
-        final hour = int.parse(timeParts[0]);
-        final minute = int.parse(timeParts[1]);
-        
-        dateTimes.add(DateTime(
-          widget.selectedDate.year,
-          widget.selectedDate.month,
-          widget.selectedDate.day,
-          hour,
-          minute,
-        ));
-      } catch (e) {
-        // Skip invalid time
-        continue;
-      }
-    }
-    
-    return dateTimes.isEmpty ? [widget.selectedDate] : dateTimes;
   }
 
   @override
@@ -488,7 +186,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final fmt = NumberFormat("#,###");
 
     return Scaffold(
-      resizeToAvoidBottomInset: false,
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Checkout')),
       body: SingleChildScrollView(
@@ -518,13 +215,6 @@ class _PaymentScreenState extends State<PaymentScreen> {
                   _orderRow(Icons.timer_rounded, '${widget.selectedTimes.length} jam'),
                 ],
               ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Timezone Display - Show time in multiple timezones
-            TimezoneDisplayWidget(
-              wibDateTimes: _getBookingDateTimes(),
             ),
 
             const SizedBox(height: 20),
